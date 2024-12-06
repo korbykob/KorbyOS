@@ -3,7 +3,6 @@
 extern uint8_t inb(uint16_t port);
 extern void outb(uint16_t port, uint8_t data);
 extern void loadIdt(void* pointer);
-extern void interrupts();
 extern void pitHandler();
 extern void cascadeHandler();
 
@@ -69,7 +68,6 @@ void start()
     idtr.length = 4095;
     idtr.base = (uint64_t)idt;
     loadIdt(&idtr);
-    interrupts();
     BOOLEAN flash = FALSE;
     while (!fired)
     {

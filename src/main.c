@@ -1,11 +1,5 @@
 #include "main.h"
 
-extern uint8_t inb(uint16_t port);
-extern void outb(uint16_t port, uint8_t data);
-extern void loadIdt(void* pointer);
-extern void pitHandler();
-extern void cascadeHandler();
-
 struct {
     uint16_t lower;
     uint16_t selector;
@@ -15,12 +9,37 @@ struct {
     uint32_t higher;
     uint32_t zero;
 } idt[256];
+struct interruptFrame
+{
+    uint64_t ip;
+    uint64_t cs;
+    uint64_t flags;
+    uint64_t sp;
+    uint64_t ss;
+};
 BOOLEAN fired = FALSE;
 
-void pit()
+static inline void outb(uint16_t port, uint8_t value)
+{
+    __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
+}
+
+static inline uint8_t inb(uint16_t port)
+{
+    uint8_t value;
+    __asm__ volatile ("inb %w1, %b0" : "=a"(value) : "Nd"(port) : "memory");
+    return value;
+}
+
+__attribute__((interrupt)) void pit(struct interruptFrame* frame)
 {
     fired = TRUE;
     outb(0x20, 0x20);
+}
+
+__attribute__((interrupt)) void cascade(struct interruptFrame* frame)
+{
+
 }
 
 void installInterrupt(uint8_t interrupt, void* handler)
@@ -31,7 +50,7 @@ void installInterrupt(uint8_t interrupt, void* handler)
     idt[index].ist = 0;
     idt[index].attributes = 0x8E;
     idt[index].middle = ((uint64_t)handler >> 16) & 0xFFFF;
-    idt[index].higher = (uint64_t)handler >> 32;
+    idt[index].higher = ((uint64_t)handler >> 32) & 0xFFFFFFFF;
     idt[index].zero = 0;
     if (interrupt < 8)
     {
@@ -59,15 +78,16 @@ void start()
     outb(0xA1, 0x01);
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
-    installInterrupt(0, pitHandler);
-    installInterrupt(2, cascadeHandler);
+    installInterrupt(0, pit);
+    installInterrupt(2, cascade);
     struct {
         uint16_t length;
         uint64_t base;
     } __attribute__((packed)) idtr;
     idtr.length = 4095;
     idtr.base = (uint64_t)idt;
-    loadIdt(&idtr);
+    __asm__ volatile ("lidt %0" : : "m"(idtr));
+    __asm__ volatile ("sti");
     BOOLEAN flash = FALSE;
     while (!fired)
     {

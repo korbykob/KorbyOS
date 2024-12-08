@@ -1,8 +1,6 @@
 #include <efi.h>
 #include <efilib.h>
 
-extern void reload();
-
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
@@ -139,7 +137,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     gdtr.length = 23;
     gdtr.base = (uint64_t)gdt;
     __asm__ volatile ("lgdt %0" : : "m"(gdtr));
-    reload();
+    __asm__ ("pushq $0x08; leaq completed(%rip), %rax; pushq %rax; retfq");
     return EFI_SUCCESS;
 }
 
@@ -155,16 +153,8 @@ static inline uint8_t inb(uint16_t port)
     return value;
 }
 
-void installInterrupt(uint8_t interrupt, void* handler)
+void unmaskInterrupt(uint8_t interrupt)
 {
-    uint16_t index = 0x20 + interrupt;
-    idt[index].lower = (uint64_t)handler & 0xFFFF;
-    idt[index].selector = 0x08;
-    idt[index].ist = 0;
-    idt[index].attributes = 0x8E;
-    idt[index].middle = ((uint64_t)handler >> 16) & 0xFFFF;
-    idt[index].higher = ((uint64_t)handler >> 32) & 0xFFFFFFFF;
-    idt[index].zero = 0;
     if (interrupt < 8)
     {
         outb(0x21, inb(0x21) & ~(1 << interrupt));
@@ -175,7 +165,18 @@ void installInterrupt(uint8_t interrupt, void* handler)
     }
 }
 
-void start();
+void installInterrupt(uint8_t interrupt, void* handler)
+{
+    uint16_t index = 0x20 + interrupt;
+    idt[index].lower = (uint64_t)handler & 0xFFFF;
+    idt[index].selector = 0x08;
+    idt[index].ist = 0;
+    idt[index].attributes = 0x8E;
+    idt[index].middle = ((uint64_t)handler >> 16) & 0xFFFF;
+    idt[index].higher = ((uint64_t)handler >> 32) & 0xFFFFFFFF;
+    idt[index].zero = 0;
+    unmaskInterrupt(interrupt);
+}
 
 __attribute__((interrupt)) void pit(struct interruptFrame* frame)
 {
@@ -183,9 +184,11 @@ __attribute__((interrupt)) void pit(struct interruptFrame* frame)
     outb(0x20, 0x20);
 }
 
+void start();
 
 void completed()
 {
+    __asm__ ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
     outb(0x43, 0x34);
     uint16_t divisor = 1193180 / 60;
     outb(0x40, divisor & 0xFF);
@@ -200,8 +203,8 @@ void completed()
     outb(0xA1, 0x01);
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
+    unmaskInterrupt(2);
     installInterrupt(0, pit);
-    installInterrupt(2, NULL);
     struct {
         uint16_t length;
         uint64_t base;

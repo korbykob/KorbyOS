@@ -193,7 +193,7 @@ void installInterrupt(uint8_t interrupt, void* handler)
 
 __attribute__((interrupt)) void pit(struct interruptFrame* frame)
 {
-    waitPit = TRUE;
+    waitPit = FALSE;
     outb(0x20, 0x20);
 }
 

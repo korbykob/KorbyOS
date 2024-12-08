@@ -22,7 +22,8 @@ struct interruptFrame
     uint64_t sp;
     uint64_t ss;
 };
-BOOLEAN pitFired = FALSE;
+BOOLEAN waitPit = FALSE;
+BOOLEAN waitKey = FALSE;
 
 void blit()
 {
@@ -103,6 +104,18 @@ void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_
     }
 }
 
+void waitForPit()
+{
+    waitPit = TRUE;
+    while (waitPit);
+}
+
+void waitForKey()
+{
+    waitKey = TRUE;
+    while (waitKey);
+}
+
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
@@ -180,7 +193,16 @@ void installInterrupt(uint8_t interrupt, void* handler)
 
 __attribute__((interrupt)) void pit(struct interruptFrame* frame)
 {
-    pitFired = TRUE;
+    waitPit = TRUE;
+    outb(0x20, 0x20);
+}
+
+__attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
+{
+    if (!(inb(0x60) & 0x80))
+    {
+        waitKey = FALSE;
+    }
     outb(0x20, 0x20);
 }
 
@@ -205,6 +227,7 @@ void completed()
     outb(0xA1, 0xFF);
     unmaskInterrupt(2);
     installInterrupt(0, pit);
+    installInterrupt(1, keyboard);
     struct {
         uint16_t length;
         uint64_t base;

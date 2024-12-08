@@ -15,7 +15,7 @@ void start()
     drawString(L"!", GOP->Mode->Info->HorizontalResolution / 2 + 136, GOP->Mode->Info->VerticalResolution / 2 - 32, normal);
     drawString(L"Press any key to continue...", GOP->Mode->Info->HorizontalResolution / 2 - 224, GOP->Mode->Info->VerticalResolution / 2, normal);
     blit();
-    while (1);
+    waitForKey();
     ZeroMem(videoBuffer, GOP->Mode->FrameBufferSize);
     blit();
 }

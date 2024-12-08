@@ -1,6 +1,7 @@
 #include "main.h"
 
-struct {
+struct
+{
     uint16_t lower;
     uint16_t selector;
     uint8_t ist;
@@ -8,7 +9,7 @@ struct {
     uint16_t middle;
     uint32_t higher;
     uint32_t zero;
-} idt[256];
+} __attribute__((packed)) idt[256];
 struct interruptFrame
 {
     uint64_t ip;
@@ -64,6 +65,17 @@ void installInterrupt(uint8_t interrupt, void* handler)
 
 void start()
 {
+    uint64_t gdt[3];
+    gdt[0] = 0;
+    gdt[1] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41) | ((uint64_t)1 << 43) | ((uint64_t)1 << 53);
+    gdt[2] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41);
+    struct {
+        uint16_t length;
+        uint64_t base;
+    } __attribute__((packed)) gdtr;
+    gdtr.length = 23;
+    gdtr.base = (uint64_t)gdt;
+    __asm__ volatile ("lgdt %0" : : "m"(gdtr));
     outb(0x43, 0x34);
     uint16_t divisor = 1193180 / 60;
     outb(0x40, divisor & 0xFF);

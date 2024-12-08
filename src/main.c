@@ -1,18 +1,5 @@
 #include "main.h"
 
-BOOLEAN fired = FALSE;
-
-__attribute__((interrupt)) void pit(struct interruptFrame* frame)
-{
-    fired = TRUE;
-    outb(0x20, 0x20);
-}
-
-void interrupts()
-{
-    installInterrupt(0, pit);
-}
-
 void start()
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL normal;

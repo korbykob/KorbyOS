@@ -24,6 +24,7 @@ struct interruptFrame
     uint64_t sp;
     uint64_t ss;
 };
+BOOLEAN pitFired = FALSE;
 
 void blit()
 {
@@ -174,9 +175,14 @@ void installInterrupt(uint8_t interrupt, void* handler)
     }
 }
 
-void interrupts();
-
 void start();
+
+__attribute__((interrupt)) void pit(struct interruptFrame* frame)
+{
+    pitFired = TRUE;
+    outb(0x20, 0x20);
+}
+
 
 void completed()
 {
@@ -194,8 +200,8 @@ void completed()
     outb(0xA1, 0x01);
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
+    installInterrupt(0, pit);
     installInterrupt(2, NULL);
-    interrupts();
     struct {
         uint16_t length;
         uint64_t base;

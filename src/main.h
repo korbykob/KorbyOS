@@ -24,6 +24,10 @@ struct interruptFrame
 } __attribute__((packed));
 BOOLEAN waitPit = FALSE;
 BOOLEAN waitKey = FALSE;
+uint8_t mouseCycle = 2;
+int8_t mouseBytes[3];
+int64_t mouseX = 0;
+int64_t mouseY = 0;
 
 void blit()
 {
@@ -93,12 +97,24 @@ void drawString(const CHAR16* string, uint32_t x, uint32_t y, EFI_GRAPHICS_OUTPU
     }
 }
 
+void fillScreen(EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
+{
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL colours[2];
+    colours[0] = color;
+    colours[1] = color;
+    uint64_t* buffer = (uint64_t*)videoBuffer;
+    for (uint64_t i = 0; i < (GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution) / 2; i++)
+    {
+        *buffer++ = *(uint64_t*)colours;
+    }
+}
+
 void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x;
-    for (unsigned short y = 0; y < height; y++)
+    for (uint32_t y = 0; y < height; y++)
     {
-        for (unsigned short x = 0; x < width; x++)
+        for (uint32_t x = 0; x < width; x++)
         {
             *address++ = color;
         }
@@ -208,6 +224,36 @@ __attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
     outb(0x20, 0x20);
 }
 
+__attribute__((interrupt)) void mouse(struct interruptFrame* frame)
+{
+    mouseBytes[mouseCycle] = inb(0x60);
+    mouseCycle++;
+    if (mouseCycle == 3)
+    {
+        mouseCycle = 0;
+        mouseX += mouseBytes[1];
+        if (mouseX < 0)
+        {
+            mouseX = 0;
+        }
+        if (mouseX > GOP->Mode->Info->HorizontalResolution - 32)
+        {
+            mouseX = GOP->Mode->Info->HorizontalResolution - 32;
+        }
+        mouseY -= mouseBytes[2];
+        if (mouseY < 0)
+        {
+            mouseY = 0;
+        }
+        if (mouseY > GOP->Mode->Info->VerticalResolution - 32)
+        {
+            mouseY = GOP->Mode->Info->VerticalResolution - 32;
+        }
+    }
+    outb(0xA0, 0x20);
+    outb(0x20, 0x20);
+}
+
 void start();
 
 void completed()
@@ -230,6 +276,18 @@ void completed()
     unmaskInterrupt(2);
     installInterrupt(0, pit);
     installInterrupt(1, keyboard);
+    outb(0x64, 0xA8);
+    outb(0x64, 0x20);
+    uint8_t status = inb(0x60) | 2;
+    outb(0x64, 0x60);
+    outb(0x60, status);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF6);
+    inb(0x60);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF4);
+    inb(0x60);
+    installInterrupt(12, mouse);
     struct {
         uint16_t length;
         uint64_t base;

@@ -67,24 +67,26 @@ void drawString(const CHAR16* string, uint32_t x, uint32_t y, EFI_GRAPHICS_OUTPU
     while (*string != 0)
     {
         uint8_t* glyph = font + ((uint32_t*)font)[2] + ((uint32_t*)font)[5] * *string++;
-        for (uint8_t y = 0; y < 64; y += 2)
+        for (uint8_t y = 0; y < 32; y++)
         {
             for (uint8_t x = 0; x < 8; x++)
             {
-                if (glyph[y] & (0b10000000 >> x))
+                if (*glyph & (0b10000000 >> x))
                 {
                     *address = colour;
                 }
                 address++;
             }
+            glyph++;
             for (uint8_t x = 0; x < 8; x++)
             {
-                if (glyph[y + 1] & (0b10000000 >> x))
+                if (*glyph & (0b10000000 >> x))
                 {
                     *address = colour;
                 }
                 address++;
             }
+            glyph++;
             address += GOP->Mode->Info->HorizontalResolution - 16;
         }
         address -= GOP->Mode->Info->HorizontalResolution * 32 - 16;

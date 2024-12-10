@@ -19,14 +19,14 @@ void start()
     BOOLEAN flash = FALSE;
     while (1)
     {
-        waitForPit();
         uint8_t colour = flash ? 0xFF : 0;
+        flash = !flash;
         uint8_t* address = (uint8_t*)videoBuffer;
         for (UINTN i = 0; i < GOP->Mode->FrameBufferSize; i++)
         {
             *address++ = colour;
         }
+        waitForPit();
         blit();
-        flash = !flash;
     }
 }

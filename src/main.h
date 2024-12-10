@@ -29,7 +29,7 @@ void blit()
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* to = (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* from = videoBuffer;
-    for (UINTN i = 0; i < GOP->Mode->FrameBufferSize; i++)
+    for (uint64_t i = 0; i < GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution; i++)
     {
         *to++ = *from++;
     }

@@ -183,12 +183,12 @@ void unmaskInterrupt(uint8_t interrupt)
 void installInterrupt(uint8_t interrupt, void* handler)
 {
     uint16_t index = 0x20 + interrupt;
-    idt[index].lower = (uint64_t)handler & 0xFFFF;
+    idt[index].lower = (uint64_t)handler;
     idt[index].selector = 0x08;
     idt[index].ist = 0;
     idt[index].attributes = 0x8E;
-    idt[index].middle = ((uint64_t)handler >> 16) & 0xFFFF;
-    idt[index].higher = ((uint64_t)handler >> 32) & 0xFFFFFFFF;
+    idt[index].middle = (uint64_t)handler >> 16;
+    idt[index].higher = (uint64_t)handler >> 32;
     idt[index].zero = 0;
     unmaskInterrupt(interrupt);
 }

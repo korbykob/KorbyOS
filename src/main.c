@@ -17,24 +17,12 @@ void start()
     blit();
     waitForKey();
     BOOLEAN flash = FALSE;
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL black;
-    black.Red = 0;
-    black.Green = 0;
-    black.Blue = 0;
     while (1)
     {
         waitForPit();
-        EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour;
-        if (flash)
-        {
-            colour = black;
-        }
-        else
-        {
-            colour = white;
-        }
-        EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer;
-        for (uint64_t i = 0; i < GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution; i++)
+        uint8_t colour = flash ? 0xFF : 0;
+        uint8_t* address = (uint8_t*)videoBuffer;
+        for (UINTN i = 0; i < GOP->Mode->FrameBufferSize; i++)
         {
             *address++ = colour;
         }

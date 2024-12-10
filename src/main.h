@@ -21,15 +21,15 @@ struct interruptFrame
     uint64_t flags;
     uint64_t sp;
     uint64_t ss;
-};
+} __attribute__((packed));
 BOOLEAN waitPit = FALSE;
 BOOLEAN waitKey = FALSE;
 
 void blit()
 {
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* to = (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase;
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* from = videoBuffer;
-    for (uint64_t i = 0; i < GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution; i++)
+    uint64_t* to = (uint64_t*)GOP->Mode->FrameBufferBase;
+    uint64_t* from = (uint64_t*)videoBuffer;
+    for (uint64_t i = 0; i < (GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution) / 2; i++)
     {
         *to++ = *from++;
     }

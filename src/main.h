@@ -23,12 +23,6 @@ struct interruptFrame
     uint64_t sp;
     uint64_t ss;
 } __attribute__((packed));
-BOOLEAN waitPit = FALSE;
-BOOLEAN waitKey = FALSE;
-uint8_t mouseCycle = 2;
-int8_t mouseBytes[3];
-int64_t mouseX = 0;
-int64_t mouseY = 0;
 
 void blit()
 {
@@ -123,18 +117,6 @@ void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_
     }
 }
 
-void waitForPit()
-{
-    waitPit = TRUE;
-    while (waitPit);
-}
-
-void waitForKey()
-{
-    waitKey = TRUE;
-    while (waitKey);
-}
-
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
@@ -159,15 +141,17 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* wallpaperFile = AllocatePool(wallpaperSize);
     uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaperFile);
     uefi_call_wrapper(file->Close, 1, file);
-    wallpaper = AllocatePool(1280 * 800 * 4);
+    wallpaper = AllocatePool(GOP->Mode->FrameBufferSize);
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
     uint8_t* fileBuffer = wallpaperFile + 0x36;
-    for (uint16_t y = 0; y < 800; y++)
+    for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution; y++)
     {
-        for (uint16_t x = 0; x < 1280; x++)
+        for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution; x++)
         {
             EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
-            uint64_t index = ((799 - y) * 1280 + x) * 3;
+            uint32_t newX = (1280 * ((((uint64_t)x) * 100000000) / GOP->Mode->Info->HorizontalResolution)) / 100000000;
+            uint32_t newY = (800 * ((((uint64_t)y) * 100000000) / GOP->Mode->Info->VerticalResolution)) / 100000000;
+            uint64_t index = ((799 - newY) * 1280 + newX) * 3;
             pixel.Blue = fileBuffer[index];
             pixel.Green = fileBuffer[index + 1];
             pixel.Red = fileBuffer[index + 2];
@@ -233,50 +217,7 @@ void installInterrupt(uint8_t interrupt, void* handler)
     unmaskInterrupt(interrupt);
 }
 
-__attribute__((interrupt)) void pit(struct interruptFrame* frame)
-{
-    waitPit = FALSE;
-    outb(0x20, 0x20);
-}
-
-__attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
-{
-    if (!(inb(0x60) & 0x80))
-    {
-        waitKey = FALSE;
-    }
-    outb(0x20, 0x20);
-}
-
-__attribute__((interrupt)) void mouse(struct interruptFrame* frame)
-{
-    mouseBytes[mouseCycle] = inb(0x60);
-    mouseCycle++;
-    if (mouseCycle == 3)
-    {
-        mouseCycle = 0;
-        mouseX += mouseBytes[1];
-        if (mouseX < 0)
-        {
-            mouseX = 0;
-        }
-        if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
-        {
-            mouseX = GOP->Mode->Info->HorizontalResolution - 16;
-        }
-        mouseY -= mouseBytes[2];
-        if (mouseY < 0)
-        {
-            mouseY = 0;
-        }
-        if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
-        {
-            mouseY = GOP->Mode->Info->VerticalResolution - 16;
-        }
-    }
-    outb(0xA0, 0x20);
-    outb(0x20, 0x20);
-}
+void interrupts();
 
 void start();
 
@@ -298,20 +239,7 @@ void completed()
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
     unmaskInterrupt(2);
-    installInterrupt(0, pit);
-    installInterrupt(1, keyboard);
-    outb(0x64, 0xA8);
-    outb(0x64, 0x20);
-    uint8_t status = inb(0x60) | 2;
-    outb(0x64, 0x60);
-    outb(0x60, status);
-    outb(0x64, 0xD4);
-    outb(0x60, 0xF6);
-    inb(0x60);
-    outb(0x64, 0xD4);
-    outb(0x60, 0xF4);
-    inb(0x60);
-    installInterrupt(12, mouse);
+    interrupts();
     struct {
         uint16_t length;
         uint64_t base;

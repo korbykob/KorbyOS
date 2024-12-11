@@ -18,6 +18,79 @@ uint8_t mouseIcon[] = {
     00,00,02,02,02,02,02,02,02,02,02,00,01,00,02,02,
     00,02,02,02,02,02,02,02,02,02,02,02,00,02,02,02,
 };
+BOOLEAN waitPit = FALSE;
+BOOLEAN waitKey = FALSE;
+uint8_t mouseCycle = 2;
+int8_t mouseBytes[3];
+int64_t mouseX = 0;
+int64_t mouseY = 0;
+BOOLEAN leftClick = FALSE;
+BOOLEAN rightClick = FALSE;
+
+__attribute__((interrupt)) void pit(struct interruptFrame* frame)
+{
+    waitPit = FALSE;
+    outb(0x20, 0x20);
+}
+
+__attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
+{
+    if (!(inb(0x60) & 0x80))
+    {
+        waitKey = FALSE;
+    }
+    outb(0x20, 0x20);
+}
+
+__attribute__((interrupt)) void mouse(struct interruptFrame* frame)
+{
+    mouseBytes[mouseCycle] = inb(0x60);
+    mouseCycle++;
+    if (mouseCycle == 3)
+    {
+        mouseCycle = 0;
+        leftClick = mouseBytes[0] & 0b00000001;
+        rightClick = mouseBytes[0] & 0b00000010;
+        mouseX += mouseBytes[1];
+        if (mouseX < 0)
+        {
+            mouseX = 0;
+        }
+        if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
+        {
+            mouseX = GOP->Mode->Info->HorizontalResolution - 16;
+        }
+        mouseY -= mouseBytes[2];
+        if (mouseY < 0)
+        {
+            mouseY = 0;
+        }
+        if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
+        {
+            mouseY = GOP->Mode->Info->VerticalResolution - 16;
+        }
+    }
+    outb(0xA0, 0x20);
+    outb(0x20, 0x20);
+}
+
+void interrupts()
+{
+    outb(0x64, 0xA8);
+    outb(0x64, 0x20);
+    uint8_t status = inb(0x60) | 2;
+    outb(0x64, 0x60);
+    outb(0x60, status);
+    installInterrupt(0, pit);
+    installInterrupt(1, keyboard);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF6);
+    inb(0x60);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF4);
+    inb(0x60);
+    installInterrupt(12, mouse);
+}
 
 void start()
 {
@@ -34,7 +107,8 @@ void start()
     drawString(L"!", GOP->Mode->Info->HorizontalResolution / 2 + 136, GOP->Mode->Info->VerticalResolution / 2 - 32, normal);
     drawString(L"Press any key to continue...", GOP->Mode->Info->HorizontalResolution / 2 - 224, GOP->Mode->Info->VerticalResolution / 2, normal);
     blit();
-    waitForKey();
+    waitKey = TRUE;
+    while (waitKey);
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL black;
     black.Red = 0;
     black.Green = 0;
@@ -71,7 +145,8 @@ void start()
             }
             address += GOP->Mode->Info->HorizontalResolution - 16;
         }
-        waitForPit();
+        waitPit = TRUE;
+        while (waitPit);
         blit();
     }
 }

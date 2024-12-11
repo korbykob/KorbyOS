@@ -21,10 +21,24 @@ uint8_t mouseIcon[] = {
 
 void start()
 {
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL normal;
+    normal.Red = 152;
+    normal.Green = 152;
+    normal.Blue = 152;
+    drawString(L"Welcome to ", GOP->Mode->Info->HorizontalResolution / 2 - 152, GOP->Mode->Info->VerticalResolution / 2 - 32, normal);
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL white;
     white.Red = 255;
     white.Green = 255;
     white.Blue = 255;
+    drawString(L"KorbyOS", GOP->Mode->Info->HorizontalResolution / 2 + 24, GOP->Mode->Info->VerticalResolution / 2 - 32, white);
+    drawString(L"!", GOP->Mode->Info->HorizontalResolution / 2 + 136, GOP->Mode->Info->VerticalResolution / 2 - 32, normal);
+    drawString(L"Press any key to continue...", GOP->Mode->Info->HorizontalResolution / 2 - 224, GOP->Mode->Info->VerticalResolution / 2, normal);
+    blit();
+    waitForKey();
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL black;
+    black.Red = 0;
+    black.Green = 0;
+    black.Blue = 0;
     while (1)
     {
         uint64_t* to = (uint64_t*)videoBuffer;
@@ -44,16 +58,11 @@ void start()
                 {
                     if (*buffer == 0)
                     {
-                        
-                        colour.Red = 0;
-                        colour.Green = 0;
-                        colour.Blue = 0;
+                        colour = black;
                     }
                     else
                     {
-                        colour.Red = 255;
-                        colour.Green = 255;
-                        colour.Blue = 255;
+                        colour = white;
                     }
                     *address = colour;
                 }

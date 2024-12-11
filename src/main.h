@@ -4,6 +4,7 @@
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
     uint16_t lower;
@@ -70,7 +71,7 @@ void drawString(const CHAR16* string, uint32_t x, uint32_t y, EFI_GRAPHICS_OUTPU
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x;
     while (*string != 0)
     {
-        uint8_t* glyph = font + ((uint32_t*)font)[2] + ((uint32_t*)font)[5] * *string++;
+        uint8_t* glyph = font + 32 + 64 * *string++;
         for (uint8_t y = 0; y < 32; y++)
         {
             for (uint8_t x = 0; x < 8; x++)
@@ -151,6 +152,29 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     font = AllocatePool(fontSize);
     uefi_call_wrapper(file->Read, 3, file, &fontSize, font);
     uefi_call_wrapper(file->Close, 1, file);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t wallpaperSize = info->FileSize;
+    FreePool(info);
+    uint8_t* wallpaperFile = AllocatePool(wallpaperSize);
+    uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaperFile);
+    uefi_call_wrapper(file->Close, 1, file);
+    wallpaper = AllocatePool(1280 * 800 * 4);
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
+    uint8_t* fileBuffer = wallpaperFile + 0x36;
+    for (uint16_t y = 0; y < 800; y++)
+    {
+        for (uint16_t x = 0; x < 1280; x++)
+        {
+            EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
+            uint64_t index = ((799 - y) * 1280 + x) * 3;
+            pixel.Blue = fileBuffer[index];
+            pixel.Green = fileBuffer[index + 1];
+            pixel.Red = fileBuffer[index + 2];
+            *buffer++ = pixel;
+        }
+    }
+    FreePool(wallpaperFile);
     UINTN entries;
     UINTN key;
     UINTN size;
@@ -236,18 +260,18 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
         {
             mouseX = 0;
         }
-        if (mouseX > GOP->Mode->Info->HorizontalResolution - 32)
+        if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
         {
-            mouseX = GOP->Mode->Info->HorizontalResolution - 32;
+            mouseX = GOP->Mode->Info->HorizontalResolution - 16;
         }
         mouseY -= mouseBytes[2];
         if (mouseY < 0)
         {
             mouseY = 0;
         }
-        if (mouseY > GOP->Mode->Info->VerticalResolution - 32)
+        if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
         {
-            mouseY = GOP->Mode->Info->VerticalResolution - 32;
+            mouseY = GOP->Mode->Info->VerticalResolution - 16;
         }
     }
     outb(0xA0, 0x20);

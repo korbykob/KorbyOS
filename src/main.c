@@ -76,13 +76,17 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
 
 void interrupts()
 {
+    outb(0x43, 0x34);
+    uint16_t divisor = 1193180 / 60;
+    outb(0x40, divisor & 0xFF);
+    outb(0x40, (divisor >> 8) & 0xFF);
+    installInterrupt(0, pit);
+    installInterrupt(1, keyboard);
     outb(0x64, 0xA8);
     outb(0x64, 0x20);
     uint8_t status = inb(0x60) | 2;
     outb(0x64, 0x60);
     outb(0x60, status);
-    installInterrupt(0, pit);
-    installInterrupt(1, keyboard);
     outb(0x64, 0xD4);
     outb(0x60, 0xF6);
     inb(0x60);

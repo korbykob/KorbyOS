@@ -224,10 +224,6 @@ void start();
 void completed()
 {
     __asm__ ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
-    outb(0x43, 0x34);
-    uint16_t divisor = 1193180 / 60;
-    outb(0x40, divisor & 0xFF);
-    outb(0x40, (divisor >> 8) & 0xFF);
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
     outb(0x21, 0x20);

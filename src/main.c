@@ -117,6 +117,10 @@ void start()
     black.Red = 0;
     black.Green = 0;
     black.Blue = 0;
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey;
+    grey.Red = 128;
+    grey.Green = 128;
+    grey.Blue = 128;
     while (1)
     {
         uint64_t* to = (uint64_t*)videoBuffer;
@@ -125,6 +129,8 @@ void start()
         {
             *to++ = *from++;
         }
+        drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
+        drawRectangle(4, GOP->Mode->Info->VerticalResolution - 28, 24, 24, white);
         EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
         uint8_t* buffer = mouseIcon;
         for (uint32_t y = 0; y < 16; y++)

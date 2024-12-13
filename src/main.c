@@ -26,6 +26,10 @@ int64_t mouseX = 0;
 int64_t mouseY = 0;
 BOOLEAN leftClick = FALSE;
 BOOLEAN rightClick = FALSE;
+BOOLEAN leftClickDebounce = FALSE;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL white;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL black;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL buttonColour;
 
 __attribute__((interrupt)) void pit(struct interruptFrame* frame)
 {
@@ -69,6 +73,18 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
         {
             mouseY = GOP->Mode->Info->VerticalResolution - 16;
         }
+        if (leftClick && !leftClickDebounce && mouseX >= 4 && mouseX < 28 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+        {
+            if (buttonColour.Red == black.Red)
+            {
+                buttonColour = white;
+            }
+            else
+            {
+                buttonColour = black;
+            }
+        }
+        leftClickDebounce = leftClick;
     }
     outb(0xA0, 0x20);
     outb(0x20, 0x20);
@@ -103,7 +119,6 @@ void start()
     normal.Green = 152;
     normal.Blue = 152;
     drawString(L"Welcome to ", GOP->Mode->Info->HorizontalResolution / 2 - 152, GOP->Mode->Info->VerticalResolution / 2 - 32, normal);
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL white;
     white.Red = 255;
     white.Green = 255;
     white.Blue = 255;
@@ -113,10 +128,10 @@ void start()
     blit();
     waitKey = TRUE;
     while (waitKey);
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL black;
     black.Red = 0;
     black.Green = 0;
     black.Blue = 0;
+    buttonColour = white;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey;
     grey.Red = 128;
     grey.Green = 128;
@@ -130,7 +145,7 @@ void start()
             *to++ = *from++;
         }
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-        drawRectangle(4, GOP->Mode->Info->VerticalResolution - 28, 24, 24, white);
+        drawRectangle(4, GOP->Mode->Info->VerticalResolution - 28, 24, 24, buttonColour);
         EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
         uint8_t* buffer = mouseIcon;
         for (uint32_t y = 0; y < 16; y++)

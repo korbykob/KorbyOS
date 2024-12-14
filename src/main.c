@@ -68,9 +68,9 @@ void start()
     {
         startButtons();
         blit(wallpaper, videoBuffer);
-        drawRectangle(GOP->Mode->Info->HorizontalResolution / 2 - 160, GOP->Mode->Info->VerticalResolution / 2 - 40, 320, 48, white);
+        drawRectangle(GOP->Mode->Info->HorizontalResolution / 2 - 160, GOP->Mode->Info->VerticalResolution / 2 - 40, 320, 48, grey);
         drawString(L"Welcome to KorbyOS!", GOP->Mode->Info->HorizontalResolution / 2 - 152, GOP->Mode->Info->VerticalResolution / 2 - 32, black);
-        drawButton(GOP->Mode->Info->HorizontalResolution / 2 - 48, GOP->Mode->Info->VerticalResolution / 2 + 24, 96, 48, white, &startButtonClick);
+        drawButton(GOP->Mode->Info->HorizontalResolution / 2 - 48, GOP->Mode->Info->VerticalResolution / 2 + 24, 96, 48, grey, &startButtonClick);
         drawString(L"Start", GOP->Mode->Info->HorizontalResolution / 2 - 40, GOP->Mode->Info->VerticalResolution / 2 + 32, black);
         drawMouse();
         waitForPit();
@@ -83,6 +83,11 @@ void start()
         blit(wallpaper, videoBuffer);
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
         drawButton(4, GOP->Mode->Info->VerticalResolution - 28, 24, 24, mainButtonActivated ? black : white, &mainButtonClick);
+        if (mainButtonActivated)
+        {
+            drawRectangle(0, GOP->Mode->Info->VerticalResolution - 432, 300, 400, grey);
+            drawRectangle(0, GOP->Mode->Info->VerticalResolution - 33, 300, 1, black);
+        }
         drawMouse();
         waitForPit();
         blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);

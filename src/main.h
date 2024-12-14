@@ -136,6 +136,11 @@ void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_
     }
 }
 
+void startButtons()
+{
+    buttonCountBuffer = 0;
+}
+
 void drawButton(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color, void* action)
 {
     drawRectangle(x, y, width, height, color);
@@ -145,6 +150,27 @@ void drawButton(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRA
     buttonsBuffer[buttonCount].endY = y + height;
     buttonsBuffer[buttonCount].action = action;
     buttonCountBuffer++;
+}
+
+void endButtons()
+{
+    for (uint8_t i = 0; i < buttonCountBuffer; i++)
+    {
+        buttons[i] = buttonsBuffer[i];
+    }
+    buttonCount = buttonCountBuffer;
+}
+
+void waitForKey()
+{
+    waitKey = TRUE;
+    while (waitKey);
+}
+
+void waitForPit()
+{
+    waitPit = TRUE;
+    while (waitPit);
 }
 
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)

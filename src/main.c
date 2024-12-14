@@ -39,8 +39,7 @@ void start()
     drawString(L"!", GOP->Mode->Info->HorizontalResolution / 2 + 136, GOP->Mode->Info->VerticalResolution / 2 - 32, normal);
     drawString(L"Press any key to continue...", GOP->Mode->Info->HorizontalResolution / 2 - 224, GOP->Mode->Info->VerticalResolution / 2, normal);
     blit();
-    waitKey = TRUE;
-    while (waitKey);
+    waitForKey();
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL black;
     black.Red = 0;
     black.Green = 0;
@@ -51,7 +50,7 @@ void start()
     grey.Blue = 128;
     while (1)
     {
-        buttonCountBuffer = 0;
+        startButtons();
         uint64_t* to = (uint64_t*)videoBuffer;
         uint64_t* from = (uint64_t*)wallpaper;
         for (uint64_t i = 0; i < (GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution) / 2; i++)
@@ -84,13 +83,8 @@ void start()
             }
             address += GOP->Mode->Info->HorizontalResolution - 16;
         }
-        waitPit = TRUE;
-        while (waitPit);
+        waitForPit();
+        endButtons();
         blit();
-        for (uint8_t i = 0; i < buttonCountBuffer; i++)
-        {
-            buttons[i] = buttonsBuffer[i];
-        }
-        buttonCount = buttonCountBuffer;
     }
 }

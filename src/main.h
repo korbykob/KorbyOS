@@ -23,6 +23,25 @@ struct interruptFrame
     uint64_t sp;
     uint64_t ss;
 } __attribute__((packed));
+BOOLEAN waitPit = FALSE;
+BOOLEAN waitKey = FALSE;
+uint8_t mouseCycle = 2;
+int8_t mouseBytes[3];
+int64_t mouseX = 0;
+int64_t mouseY = 0;
+BOOLEAN leftClickDebounce = FALSE;
+struct Button
+{
+    uint32_t startX;
+    uint32_t startY;
+    uint32_t endX;
+    uint32_t endY;
+    void* action;
+};
+struct Button buttonsBuffer[100];
+uint8_t buttonCountBuffer = 0;
+struct Button buttons[100];
+uint8_t buttonCount = 0;
 
 void blit()
 {
@@ -115,6 +134,17 @@ void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_
         }
         address += GOP->Mode->Info->HorizontalResolution - width;
     }
+}
+
+void drawButton(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color, void* action)
+{
+    drawRectangle(x, y, width, height, color);
+    buttonsBuffer[buttonCount].startX = x;
+    buttonsBuffer[buttonCount].startY = y;
+    buttonsBuffer[buttonCount].endX = x + width;
+    buttonsBuffer[buttonCount].endY = y + height;
+    buttonsBuffer[buttonCount].action = action;
+    buttonCountBuffer++;
 }
 
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
@@ -217,7 +247,62 @@ void installInterrupt(uint8_t interrupt, void* handler)
     unmaskInterrupt(interrupt);
 }
 
-void interrupts();
+__attribute__((interrupt)) void pit(struct interruptFrame* frame)
+{
+    waitPit = FALSE;
+    outb(0x20, 0x20);
+}
+
+__attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
+{
+    if (!(inb(0x60) & 0x80))
+    {
+        waitKey = FALSE;
+    }
+    outb(0x20, 0x20);
+}
+
+__attribute__((interrupt)) void mouse(struct interruptFrame* frame)
+{
+    mouseBytes[mouseCycle] = inb(0x60);
+    mouseCycle++;
+    if (mouseCycle == 3)
+    {
+        mouseCycle = 0;
+        BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
+        mouseX += mouseBytes[1];
+        if (mouseX < 0)
+        {
+            mouseX = 0;
+        }
+        if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
+        {
+            mouseX = GOP->Mode->Info->HorizontalResolution - 16;
+        }
+        mouseY -= mouseBytes[2];
+        if (mouseY < 0)
+        {
+            mouseY = 0;
+        }
+        if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
+        {
+            mouseY = GOP->Mode->Info->VerticalResolution - 16;
+        }
+        if (leftClick && !leftClickDebounce)
+        {
+            for (uint8_t i = 0; i < buttonCount; i++)
+            {
+                if (mouseX >= buttons[i].startX && mouseX < buttons[i].endX && mouseY >= buttons[i].startY && mouseY < buttons[i].endY)
+                {
+                    ((void (*)())buttons[i].action)();
+                }
+            }
+        }
+        leftClickDebounce = leftClick;
+    }
+    outb(0xA0, 0x20);
+    outb(0x20, 0x20);
+}
 
 void start();
 
@@ -235,7 +320,24 @@ void completed()
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
     unmaskInterrupt(2);
-    interrupts();
+    outb(0x43, 0x34);
+    uint16_t divisor = 1193180 / 60;
+    outb(0x40, divisor & 0xFF);
+    outb(0x40, (divisor >> 8) & 0xFF);
+    installInterrupt(0, pit);
+    installInterrupt(1, keyboard);
+    outb(0x64, 0xA8);
+    outb(0x64, 0x20);
+    uint8_t status = inb(0x60) | 2;
+    outb(0x64, 0x60);
+    outb(0x60, status);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF6);
+    inb(0x60);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF4);
+    inb(0x60);
+    installInterrupt(12, mouse);
     struct {
         uint16_t length;
         uint64_t base;

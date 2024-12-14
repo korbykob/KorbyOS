@@ -24,12 +24,22 @@ uint8_t mouseCycle = 2;
 int8_t mouseBytes[3];
 int64_t mouseX = 0;
 int64_t mouseY = 0;
-BOOLEAN leftClick = FALSE;
-BOOLEAN rightClick = FALSE;
 BOOLEAN leftClickDebounce = FALSE;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL white;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL black;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL buttonColour;
+struct Button
+{
+    uint32_t startX;
+    uint32_t startY;
+    uint32_t endX;
+    uint32_t endY;
+    void* action;
+};
+struct Button buttonsBuffer[100];
+uint8_t buttonCountBuffer = 0;
+struct Button buttons[100];
+uint8_t buttonCount = 0;
 
 __attribute__((interrupt)) void pit(struct interruptFrame* frame)
 {
@@ -53,8 +63,7 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
     if (mouseCycle == 3)
     {
         mouseCycle = 0;
-        leftClick = mouseBytes[0] & 0b00000001;
-        rightClick = mouseBytes[0] & 0b00000010;
+        BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
         mouseX += mouseBytes[1];
         if (mouseX < 0)
         {
@@ -73,21 +82,31 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
         {
             mouseY = GOP->Mode->Info->VerticalResolution - 16;
         }
-        if (leftClick && !leftClickDebounce && mouseX >= 4 && mouseX < 28 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+        if (leftClick && !leftClickDebounce)
         {
-            if (buttonColour.Red == black.Red)
+            for (uint8_t i = 0; i < buttonCount; i++)
             {
-                buttonColour = white;
-            }
-            else
-            {
-                buttonColour = black;
+                if (mouseX >= buttons[i].startX && mouseX < buttons[i].endX && mouseY >= buttons[i].startY && mouseY < buttons[i].endY)
+                {
+                    ((void (*)())buttons[i].action)();
+                }
             }
         }
         leftClickDebounce = leftClick;
     }
     outb(0xA0, 0x20);
     outb(0x20, 0x20);
+}
+
+void drawButton(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color, void* action)
+{
+    drawRectangle(x, y, width, height, color);
+    buttonsBuffer[buttonCount].startX = x;
+    buttonsBuffer[buttonCount].startY = y;
+    buttonsBuffer[buttonCount].endX = x + width;
+    buttonsBuffer[buttonCount].endY = y + height;
+    buttonsBuffer[buttonCount].action = action;
+    buttonCountBuffer++;
 }
 
 void interrupts()
@@ -110,6 +129,18 @@ void interrupts()
     outb(0x60, 0xF4);
     inb(0x60);
     installInterrupt(12, mouse);
+}
+
+void buttonClick()
+{
+    if (buttonColour.Red == black.Red)
+    {
+        buttonColour = white;
+    }
+    else
+    {
+        buttonColour = black;
+    }
 }
 
 void start()
@@ -138,6 +169,7 @@ void start()
     grey.Blue = 128;
     while (1)
     {
+        buttonCountBuffer = 0;
         uint64_t* to = (uint64_t*)videoBuffer;
         uint64_t* from = (uint64_t*)wallpaper;
         for (uint64_t i = 0; i < (GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution) / 2; i++)
@@ -145,7 +177,7 @@ void start()
             *to++ = *from++;
         }
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-        drawRectangle(4, GOP->Mode->Info->VerticalResolution - 28, 24, 24, buttonColour);
+        drawButton(4, GOP->Mode->Info->VerticalResolution - 28, 24, 24, buttonColour, &buttonClick);
         EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
         uint8_t* buffer = mouseIcon;
         for (uint32_t y = 0; y < 16; y++)
@@ -173,5 +205,10 @@ void start()
         waitPit = TRUE;
         while (waitPit);
         blit();
+        for (uint8_t i = 0; i < buttonCountBuffer; i++)
+        {
+            buttons[i] = buttonsBuffer[i];
+        }
+        buttonCount = buttonCountBuffer;
     }
 }

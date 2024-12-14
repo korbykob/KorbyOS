@@ -43,10 +43,10 @@ uint8_t buttonCountBuffer = 0;
 struct Button buttons[100];
 uint8_t buttonCount = 0;
 
-void blit()
+void blit(void* source, void* destination)
 {
-    uint64_t* to = (uint64_t*)GOP->Mode->FrameBufferBase;
-    uint64_t* from = (uint64_t*)videoBuffer;
+    uint64_t* to = (uint64_t*)destination;
+    uint64_t* from = (uint64_t*)source;
     for (uint64_t i = 0; i < (GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution) / 2; i++)
     {
         *to++ = *from++;
@@ -144,11 +144,11 @@ void startButtons()
 void drawButton(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color, void* action)
 {
     drawRectangle(x, y, width, height, color);
-    buttonsBuffer[buttonCount].startX = x;
-    buttonsBuffer[buttonCount].startY = y;
-    buttonsBuffer[buttonCount].endX = x + width;
-    buttonsBuffer[buttonCount].endY = y + height;
-    buttonsBuffer[buttonCount].action = action;
+    buttonsBuffer[buttonCountBuffer].startX = x;
+    buttonsBuffer[buttonCountBuffer].startY = y;
+    buttonsBuffer[buttonCountBuffer].endX = x + width;
+    buttonsBuffer[buttonCountBuffer].endY = y + height;
+    buttonsBuffer[buttonCountBuffer].action = action;
     buttonCountBuffer++;
 }
 
@@ -178,7 +178,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     InitializeLib(ImageHandle, SystemTable);
     LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
     videoBuffer = AllocateZeroPool(GOP->Mode->FrameBufferSize);
-    blit();
+    blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);
     EFI_LOADED_IMAGE* image = NULL;
     uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);

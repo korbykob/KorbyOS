@@ -279,12 +279,18 @@ __attribute__((interrupt)) void pit(struct interruptFrame* frame)
     outb(0x20, 0x20);
 }
 
+void keyPress(uint8_t scancode, BOOLEAN pressed);
+
 __attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
 {
-    if (!(inb(0x60) & 0x80))
+    uint8_t scancode = inb(0x60);
+    BOOLEAN pressed = TRUE;
+    if (scancode & 0b10000000)
     {
-        waitKey = FALSE;
+        scancode = scancode & 0b01111111;
+        pressed = FALSE;
     }
+    keyPress(scancode, pressed);
     outb(0x20, 0x20);
 }
 

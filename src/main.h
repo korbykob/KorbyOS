@@ -284,13 +284,12 @@ void keyPress(uint8_t scancode, BOOLEAN pressed);
 __attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
 {
     uint8_t scancode = inb(0x60);
-    BOOLEAN pressed = TRUE;
-    if (scancode & 0b10000000)
+    BOOLEAN unpressed = scancode & 0b10000000;
+    if (unpressed)
     {
         scancode = scancode & 0b01111111;
-        pressed = FALSE;
     }
-    keyPress(scancode, pressed);
+    keyPress(scancode, unpressed);
     outb(0x20, 0x20);
 }
 

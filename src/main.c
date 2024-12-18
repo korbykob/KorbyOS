@@ -24,9 +24,9 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
 BOOLEAN started = FALSE;
 BOOLEAN mainButtonActivated = FALSE;
 
-void keyPress(uint8_t scancode, BOOLEAN pressed)
+void keyPress(uint8_t scancode, BOOLEAN unpressed)
 {
-    if (pressed && scancode == 91)
+    if (!unpressed && scancode == 91)
     {
         mainButtonActivated = !mainButtonActivated;
     }

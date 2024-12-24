@@ -97,6 +97,9 @@ void start()
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 33, 300, 1, black);
         }
         test();
+        CHAR16 characters[100];
+        ValueToString(characters, FALSE, number);
+        drawString(characters, 0, 0, white);
         drawMouse();
         waitForPit();
         blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);

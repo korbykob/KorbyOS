@@ -43,6 +43,7 @@ struct Button buttonsBuffer[100];
 uint8_t buttonCountBuffer = 0;
 struct Button buttons[100];
 uint8_t buttonCount = 0;
+uint64_t number = 0;
 
 void blit(void* source, void* destination)
 {
@@ -268,9 +269,9 @@ void unmaskInterrupt(uint8_t interrupt)
     }
 }
 
-void installInterrupt(uint8_t interrupt, void* handler)
+void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
 {
-    uint16_t index = 0x20 + interrupt;
+    uint16_t index = (hardware ? 0x20 : 0) + interrupt;
     idt[index].lower = (uint64_t)handler;
     idt[index].selector = 0x08;
     idt[index].ist = 0;
@@ -278,6 +279,10 @@ void installInterrupt(uint8_t interrupt, void* handler)
     idt[index].middle = (uint64_t)handler >> 16;
     idt[index].higher = (uint64_t)handler >> 32;
     idt[index].zero = 0;
+    if (hardware)
+    {
+        unmaskInterrupt(interrupt);
+    }
 }
 
 __attribute__((interrupt)) void pit(struct interruptFrame* frame)
@@ -342,6 +347,11 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
     outb(0x20, 0x20);
 }
 
+__attribute__((interrupt)) void syscall(struct interruptFrame* frame)
+{
+    number = frame->sp;
+}
+
 void start();
 
 void completed()
@@ -362,10 +372,8 @@ void completed()
     uint16_t divisor = 1193180 / 60;
     outb(0x40, divisor & 0xFF);
     outb(0x40, (divisor >> 8) & 0xFF);
-    installInterrupt(0, pit);
-    unmaskInterrupt(0);
-    installInterrupt(1, keyboard);
-    unmaskInterrupt(1);
+    installInterrupt(0, pit, TRUE);
+    installInterrupt(1, keyboard, TRUE);
     outb(0x64, 0xA8);
     outb(0x64, 0x20);
     uint8_t status = inb(0x60) | 2;
@@ -377,8 +385,8 @@ void completed()
     outb(0x64, 0xD4);
     outb(0x60, 0xF4);
     inb(0x60);
-    installInterrupt(12, mouse);
-    unmaskInterrupt(12);
+    installInterrupt(12, mouse, TRUE);
+    installInterrupt(0x80, syscall, FALSE);
     struct {
         uint16_t length;
         uint64_t base;

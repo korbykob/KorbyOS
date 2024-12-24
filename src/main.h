@@ -4,6 +4,7 @@
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
+void (*test)() = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
@@ -215,6 +216,13 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         }
     }
     FreePool(wallpaperFile);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"test.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t testSize = info->FileSize;
+    FreePool(info);
+    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiConventionalMemory, (testSize + EFI_PAGE_SIZE) / EFI_PAGE_SIZE, (EFI_PHYSICAL_ADDRESS*)&test);
+    uefi_call_wrapper(file->Read, 3, file, &testSize, test);
+    uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;
     UINTN size;

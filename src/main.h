@@ -349,7 +349,7 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
 
 __attribute__((interrupt)) void syscall(struct interruptFrame* frame)
 {
-    __asm__ volatile ("mov %%rbx, %0" : "=r" (number));
+    __asm__ volatile ("mov %%rax, %0" : "=r" (number));
 }
 
 void start();

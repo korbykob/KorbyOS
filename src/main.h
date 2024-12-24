@@ -220,7 +220,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     info = LibFileInfo(file);
     uint64_t testSize = info->FileSize;
     FreePool(info);
-    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAddress, EfiConventionalMemory, (testSize + EFI_PAGE_SIZE) / EFI_PAGE_SIZE, (EFI_PHYSICAL_ADDRESS*)&test);
+    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiConventionalMemory, (testSize + EFI_PAGE_SIZE) / EFI_PAGE_SIZE, (EFI_PHYSICAL_ADDRESS*)&test);
     uefi_call_wrapper(file->Read, 3, file, &testSize, test);
     uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;

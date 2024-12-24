@@ -220,7 +220,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     info = LibFileInfo(file);
     uint64_t testSize = info->FileSize;
     FreePool(info);
-    uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiConventionalMemory, (testSize + EFI_PAGE_SIZE) / EFI_PAGE_SIZE, (EFI_PHYSICAL_ADDRESS*)&test);
+    test = AllocatePool(testSize);
     uefi_call_wrapper(file->Read, 3, file, &testSize, test);
     uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
@@ -278,7 +278,6 @@ void installInterrupt(uint8_t interrupt, void* handler)
     idt[index].middle = (uint64_t)handler >> 16;
     idt[index].higher = (uint64_t)handler >> 32;
     idt[index].zero = 0;
-    unmaskInterrupt(interrupt);
 }
 
 __attribute__((interrupt)) void pit(struct interruptFrame* frame)
@@ -364,7 +363,9 @@ void completed()
     outb(0x40, divisor & 0xFF);
     outb(0x40, (divisor >> 8) & 0xFF);
     installInterrupt(0, pit);
+    unmaskInterrupt(0);
     installInterrupt(1, keyboard);
+    unmaskInterrupt(1);
     outb(0x64, 0xA8);
     outb(0x64, 0x20);
     uint8_t status = inb(0x60) | 2;
@@ -377,6 +378,7 @@ void completed()
     outb(0x60, 0xF4);
     inb(0x60);
     installInterrupt(12, mouse);
+    unmaskInterrupt(12);
     struct {
         uint16_t length;
         uint64_t base;

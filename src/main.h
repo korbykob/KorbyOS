@@ -33,17 +33,17 @@ int64_t mouseY = 0;
 BOOLEAN leftClickDebounce = FALSE;
 struct Button
 {
-    uint32_t startX;
-    uint32_t startY;
-    uint32_t endX;
-    uint32_t endY;
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
     void* action;
 };
 struct Button buttonsBuffer[100];
 uint8_t buttonCountBuffer = 0;
 struct Button buttons[100];
 uint8_t buttonCount = 0;
-uint64_t number = 0;
+int64_t number = 0;
 
 void blit(void* source, void* destination)
 {
@@ -143,14 +143,9 @@ void startButtons()
     buttonCountBuffer = 0;
 }
 
-void drawButton(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color, void* action)
+void registerButton(struct Button* button)
 {
-    drawRectangle(x, y, width, height, color);
-    buttonsBuffer[buttonCountBuffer].startX = x;
-    buttonsBuffer[buttonCountBuffer].startY = y;
-    buttonsBuffer[buttonCountBuffer].endX = x + width;
-    buttonsBuffer[buttonCountBuffer].endY = y + height;
-    buttonsBuffer[buttonCountBuffer].action = action;
+    buttonsBuffer[buttonCountBuffer] = *button;
     buttonCountBuffer++;
 }
 
@@ -335,7 +330,7 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
         {
             for (uint8_t i = 0; i < buttonCount; i++)
             {
-                if (mouseX >= buttons[i].startX && mouseX < buttons[i].endX && mouseY >= buttons[i].startY && mouseY < buttons[i].endY)
+                if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
                 {
                     ((void (*)())buttons[i].action)();
                 }
@@ -349,7 +344,7 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
 
 __attribute__((interrupt)) void syscall(struct interruptFrame* frame)
 {
-    __asm__ volatile ("mov %%rax, %0" : "=r" (number));
+    __asm__ volatile ("movq %%rdx, %0" : "=r"(number));
 }
 
 void start();

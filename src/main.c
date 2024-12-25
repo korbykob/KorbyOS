@@ -1,22 +1,22 @@
 #include "main.h"
 
 uint8_t mouseIcon[] = {
-    00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,
-    00,01,01,01,01,01,01,01,01,01,01,01,01,01,00,02,
-    00,01,01,01,01,01,01,01,01,01,01,01,01,00,02,02,
-    00,01,01,01,01,01,01,01,01,01,01,01,00,02,02,02,
-    00,01,01,01,01,01,01,01,01,01,01,00,02,02,02,02,
-    00,01,01,01,01,01,01,01,01,01,00,02,02,02,02,02,
-    00,01,01,01,01,01,01,01,01,00,02,02,02,02,02,02,
-    00,01,01,01,01,01,01,01,01,01,00,02,02,02,02,02,
-    00,01,01,01,01,01,01,01,01,01,01,00,02,02,02,02,
-    00,01,01,01,01,01,00,01,01,01,01,01,00,02,02,02,
-    00,01,01,01,01,00,02,00,01,01,01,01,01,00,02,02,
-    00,01,01,01,00,02,02,02,00,01,01,01,01,01,00,02,
-    00,01,01,00,02,02,02,02,02,00,01,01,01,01,01,00,
-    00,01,00,02,02,02,02,02,02,02,00,01,01,01,00,02,
-    00,00,02,02,02,02,02,02,02,02,02,00,01,00,02,02,
-    00,02,02,02,02,02,02,02,02,02,02,02,00,02,02,02,
+    00,00,00,02,02,02,02,02,02,02,02,02,02,02,02,02,
+    00,01,00,00,00,02,02,02,02,02,02,02,02,02,02,02,
+    00,01,01,01,01,00,00,00,02,02,02,02,02,02,02,02,
+    00,01,01,01,01,01,01,00,00,02,02,02,02,02,02,02,
+    00,00,01,01,01,01,01,01,01,00,00,00,02,02,02,02,
+    00,00,01,01,01,01,01,01,01,01,00,00,02,02,02,02,
+    02,00,01,01,01,01,01,01,01,01,00,02,02,02,02,02,
+    02,00,01,01,01,01,01,01,01,00,02,02,02,02,02,02,
+    02,00,00,01,01,01,01,00,00,00,00,02,02,02,02,02,
+    02,02,00,01,00,00,00,00,01,01,00,00,02,02,02,02,
+    02,02,00,00,00,02,00,00,01,01,01,00,00,00,00,02,
+    02,02,02,00,02,02,02,00,00,00,01,01,01,01,00,02,
+    02,02,02,02,02,02,02,02,02,02,00,00,00,01,00,02,
+    02,02,02,02,02,02,02,02,02,02,02,02,00,00,00,02,
+    02,02,02,02,02,02,02,02,02,02,02,02,02,00,02,02,
+    02,02,02,02,02,02,02,02,02,02,02,02,02,02,02,02,
 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
@@ -78,8 +78,15 @@ void start()
         blit(wallpaper, videoBuffer);
         drawRectangle(GOP->Mode->Info->HorizontalResolution / 2 - 160, GOP->Mode->Info->VerticalResolution / 2 - 40, 320, 48, grey);
         drawString(L"Welcome to KorbyOS!", GOP->Mode->Info->HorizontalResolution / 2 - 152, GOP->Mode->Info->VerticalResolution / 2 - 32, black);
-        drawButton(GOP->Mode->Info->HorizontalResolution / 2 - 48, GOP->Mode->Info->VerticalResolution / 2 + 24, 96, 48, grey, startButtonClick);
+        struct Button button;
+        button.x = GOP->Mode->Info->HorizontalResolution / 2 - 48;
+        button.y = GOP->Mode->Info->VerticalResolution / 2 + 24;
+        button.width = 96;
+        button.height = 48;
+        button.action = startButtonClick;
+        drawRectangle(button.x, button.y, button.width, button.height, grey);
         drawString(L"Start", GOP->Mode->Info->HorizontalResolution / 2 - 40, GOP->Mode->Info->VerticalResolution / 2 + 32, black);
+        registerButton(&button);
         drawMouse();
         waitForPit();
         blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);
@@ -90,7 +97,14 @@ void start()
         startButtons();
         blit(wallpaper, videoBuffer);
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-        drawButton(4, GOP->Mode->Info->VerticalResolution - 28, 24, 24, mainButtonActivated ? black : white, mainButtonClick);
+        struct Button button;
+        button.x = 4;
+        button.y = GOP->Mode->Info->VerticalResolution - 28;
+        button.width = 24;
+        button.height = 24;
+        button.action = mainButtonClick;
+        drawRectangle(button.x, button.y, button.width, button.height, mainButtonActivated ? black : white);
+        registerButton(&button);
         if (mainButtonActivated)
         {
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 432, 300, 400, grey);

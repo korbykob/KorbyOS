@@ -1,6 +1,8 @@
 #include <efi.h>
 #include <efilib.h>
 
+extern void syscallHandler();
+
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
@@ -43,7 +45,6 @@ struct Button buttonsBuffer[100];
 uint8_t buttonCountBuffer = 0;
 struct Button buttons[100];
 uint8_t buttonCount = 0;
-int64_t number = 0;
 
 void blit(void* source, void* destination)
 {
@@ -342,10 +343,7 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-__attribute__((interrupt)) void syscall(struct interruptFrame* frame)
-{
-    __asm__ volatile ("movq %%rdx, %0" : "=r"(number));
-}
+uint64_t syscallHandle(uint64_t code);
 
 void start();
 
@@ -381,7 +379,7 @@ void completed()
     outb(0x60, 0xF4);
     inb(0x60);
     installInterrupt(12, mouse, TRUE);
-    installInterrupt(0x80, syscall, FALSE);
+    installInterrupt(0x80, syscallHandler, FALSE);
     struct {
         uint16_t length;
         uint64_t base;

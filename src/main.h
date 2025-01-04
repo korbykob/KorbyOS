@@ -360,7 +360,7 @@ __attribute__((interrupt)) void mouse(struct interruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-uint64_t syscallHandle(uint64_t code);
+uint64_t syscallHandle(uint64_t code, uint64_t arg);
 
 void start();
 

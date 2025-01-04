@@ -3,6 +3,8 @@
 
 extern void syscallHandler();
 
+EFI_MEMORY_DESCRIPTOR* descriptor;
+uint64_t allocated = 0;
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
@@ -45,6 +47,13 @@ struct Button buttonsBuffer[100];
 uint8_t buttonCountBuffer = 0;
 struct Button buttons[100];
 uint8_t buttonCount = 0;
+
+void* alloc(uint64_t amount)
+{
+    void* value = (void*)(descriptor->PhysicalStart + allocated);
+    allocated += amount;
+    return value;
+}
 
 void blit(void* source, void* destination)
 {
@@ -223,8 +232,16 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     UINTN entries;
     UINTN key;
     UINTN size;
-    uint32_t version;
-    LibMemoryMap(&entries, &key, &size, &version);
+    UINT32 version;
+    uint8_t* map = (uint8_t*)LibMemoryMap(&entries, &key, &size, &version);
+    for (UINTN i = 0; i < entries; i++)
+    {
+        EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
+        if (iterator->Type == EfiConventionalMemory)
+        {
+            descriptor = iterator;
+        }
+    }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
     uint64_t gdt[3];
     gdt[0] = 0;

@@ -20,7 +20,7 @@ struct
     uint32_t higher;
     uint32_t zero;
 } __attribute__((packed)) idt[256];
-struct interruptFrame
+struct InterruptFrame
 {
     uint64_t ip;
     uint64_t cs;
@@ -298,7 +298,7 @@ void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
     }
 }
 
-__attribute__((interrupt)) void pit(struct interruptFrame* frame)
+__attribute__((interrupt)) void pit(struct InterruptFrame* frame)
 {
     waitPit = FALSE;
     outb(0x20, 0x20);
@@ -306,7 +306,7 @@ __attribute__((interrupt)) void pit(struct interruptFrame* frame)
 
 void keyPress(uint8_t scancode, BOOLEAN pressed);
 
-__attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
+__attribute__((interrupt)) void keyboard(struct InterruptFrame* frame)
 {
     uint8_t scancode = inb(0x60);
     BOOLEAN unpressed = scancode & 0b10000000;
@@ -318,7 +318,7 @@ __attribute__((interrupt)) void keyboard(struct interruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-__attribute__((interrupt)) void mouse(struct interruptFrame* frame)
+__attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
 {
     mouseBytes[mouseCycle] = inb(0x60);
     mouseCycle++;

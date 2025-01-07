@@ -8,9 +8,13 @@ uint64_t allocated = 0;
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
-void (*test)() = NULL;
-void (*update)() = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
+struct
+{
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon;
+    void (*start)();
+    void (*update)();
+} programs[1];
 struct
 {
     uint16_t lower;
@@ -227,8 +231,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     info = LibFileInfo(file);
     uint64_t testSize = info->FileSize;
     FreePool(info);
-    test = AllocatePool(testSize);
-    update = test + 5;
+    programs[0].start = AllocatePool(testSize);
+    programs[0].update = programs[0].start + 5;
     uefi_call_wrapper(file->Read, 3, file, &testSize, test);
     uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;

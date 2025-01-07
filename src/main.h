@@ -11,7 +11,7 @@ uint8_t* font = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon;
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24][24];
     void (*start)();
     void (*update)();
 } programs[1];
@@ -227,13 +227,31 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         }
     }
     FreePool(wallpaperFile);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"test.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t bmpSize = info->FileSize;
+    FreePool(info);
+    uint8_t* bmpFile = AllocatePool(bmpSize);
+    uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmpFile);
+    uefi_call_wrapper(file->Close, 1, file);
+    for (uint32_t y = 0; y < 24; y++)
+    {
+        for (uint32_t x = 0; x < 24; x++)
+        {
+            uint64_t index = ((23 - y) * 24 + x) * 3;
+            programs[0].icon.Blue = fileBuffer[index];
+            programs[0].icon.Green = fileBuffer[index + 1];
+            programs[0].icon.Red = fileBuffer[index + 2];
+        }
+    }
+    FreePool(bmpFile);
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"test.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t testSize = info->FileSize;
     FreePool(info);
     programs[0].start = AllocatePool(testSize);
     programs[0].update = programs[0].start + 5;
-    uefi_call_wrapper(file->Read, 3, file, &testSize, test);
+    uefi_call_wrapper(file->Read, 3, file, &testSize, programs[0].start);
     uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;

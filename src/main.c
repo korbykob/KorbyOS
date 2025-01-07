@@ -103,7 +103,6 @@ void start()
         blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);
         endButtons();
     }
-    test();
     while (1)
     {
         startButtons();
@@ -122,7 +121,6 @@ void start()
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 432, 300, 400, grey);
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 33, 300, 1, black);
         }
-        update();
         CHAR16 characters[100];
         ValueToString(characters, FALSE, allocated);
         drawString(characters, 0, 0, white);

@@ -1,29 +1,49 @@
 #include "../program.h"
 
 struct Window* window;
-uint8_t gradient;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour;
 
 void _start()
 {
-    window = allocateWindow(500, 500, L"Window test");
-    gradient = 0;
+    window = allocateWindow(640, 360, L"Cyberpunk 2077 (REAL11!!1)");
+    colour.Red = 0;
+    colour.Green = 0;
+    colour.Blue = 0;
 }
 
 void update()
 {
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour;
-    colour.Red = gradient;
-    colour.Green = gradient;
-    colour.Blue = gradient;
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL colours[2];
-    colours[0] = colour;
-    colours[1] = colour;
-    uint64_t* buffer = (uint64_t*)window->buffer;
-    for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
+    for (uint16_t y = 0; y < 360; y++)
     {
-        *buffer++ = *(uint64_t*)colours;
+        for (uint16_t x = 0; x < 640; x++)
+        {
+            window->buffer[y * window->width + x] = colour;
+        }
     }
-    gradient++;
+    if (colour.Red != 0xFF && colour.Green == 0x00)
+    {
+        colour.Red += 17;
+    }
+    else if (colour.Blue != 0x00 && colour.Green == 0x00)
+    {
+        colour.Blue -= 17;
+    }
+    else if (colour.Green != 0xFF && colour.Blue != 0xFF)
+    {
+        colour.Green += 17;
+    }
+    else if (colour.Red != 0x00)
+    {
+        colour.Red -= 17;
+    }
+    else if (colour.Blue != 0xFF)
+    {
+        colour.Blue += 17;
+    }
+    else if (colour.Green != 0x00)
+    {
+        colour.Green -= 17;
+    }
 }
 
 void stop()

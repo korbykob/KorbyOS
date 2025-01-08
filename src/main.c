@@ -21,6 +21,8 @@ uint8_t mouseIcon[] = {
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
+int64_t mouseX = 0;
+int64_t mouseY = 0;
 struct Button
 {
     uint32_t x;
@@ -42,8 +44,8 @@ struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
         window = window->next;
     }
     window->next = allocate(sizeof(struct Window));
-    window->next->x = GOP->Mode->Info->HorizontalResolution / 2 - width / 2;
-    window->next->y = GOP->Mode->Info->VerticalResolution / 2 - height / 2;
+    window->next->x = 0;
+    window->next->y = 0;
     window->next->width = width;
     window->next->height = height;
     window->next->title = title;
@@ -94,6 +96,58 @@ void keyPress(uint8_t scancode, BOOLEAN unpressed)
     }
 }
 
+void mouseMove(int8_t x, int8_t y)
+{
+    mouseX += x;
+    if (mouseX < 0)
+    {
+        mouseX = 0;
+    }
+    if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
+    {
+        mouseX = GOP->Mode->Info->HorizontalResolution - 16;
+    }
+    mouseY -= y;
+    if (mouseY < 0)
+    {
+        mouseY = 0;
+    }
+    if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
+    {
+        mouseY = GOP->Mode->Info->VerticalResolution - 16;
+    }
+    struct Window* window = &windows;
+    while (TRUE)
+    {
+        window = window->next;
+        if (window == NULL)
+        {
+            break;
+        }
+        if (window->dragging)
+        {
+            window->x += x;
+            if (window->x < 0)
+            {
+                window->x = 0;
+            }
+            if (window->x > GOP->Mode->Info->HorizontalResolution - window->width - 10)
+            {
+                window->x = GOP->Mode->Info->HorizontalResolution - window->width - 10;
+            }
+            window->y -= y;
+            if (window->y < 0)
+            {
+                window->y = 0;
+            }
+            if (window->y > GOP->Mode->Info->VerticalResolution - window->height - 79)
+            {
+                window->y = GOP->Mode->Info->VerticalResolution - window->height - 79;
+            }
+        }
+    }
+}
+
 void mouseClick(BOOLEAN left, BOOLEAN unpressed)
 {
     if (left)
@@ -123,11 +177,32 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
                     }
                 }
             }
-
+            struct Window* window = &windows;
+            while (TRUE)
+            {
+                window = window->next;
+                if (window == NULL)
+                {
+                    break;
+                }
+                if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 42)
+                {
+                    window->dragging = TRUE;
+                }
+            }
         }
         else
         {
-
+            struct Window* window = &windows;
+            while (TRUE)
+            {
+                window = window->next;
+                if (window == NULL)
+                {
+                    break;
+                }
+                window->dragging = FALSE;
+            }
         }
     }
 }
@@ -165,6 +240,18 @@ void start()
     while (TRUE)
     {
         blit(wallpaper, videoBuffer);
+        struct Window* window = &windows;
+        while (TRUE)
+        {
+            window = window->next;
+            if (window == NULL)
+            {
+                break;
+            }
+            drawRectangle(window->x, window->y, window->width + 10, window->height + 47, grey);
+            drawString(window->title, window->x + 5, window->y + 5, black);
+            drawImage(window->x + 5, window->y + 42, window->width, window->height, window->buffer);
+        }
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
         if (mainButtonActivated)
         {
@@ -200,18 +287,6 @@ void start()
             buttonCountBuffer++;
         }
         buttonCount = buttonCountBuffer;
-        struct Window* window = &windows;
-        while (TRUE)
-        {
-            window = window->next;
-            if (window == NULL)
-            {
-                break;
-            }
-            drawRectangle(window->x, window->y, window->width + 10, window->height + 52, grey);
-            drawString(window->title, window->x + 10, window->y + 10, black);
-            drawImage(window->x + 5, window->y + 47, window->width, window->height, window->buffer);
-        }
         drawMouse();
         waitForPit();
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);

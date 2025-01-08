@@ -3,7 +3,7 @@
 extern void syscallHandler();
 
 void* memory = NULL;
-BOOLEAN allocated[2000000];
+BOOLEAN* allocated = NULL;
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
@@ -38,8 +38,6 @@ BOOLEAN waitPit = FALSE;
 BOOLEAN waitKey = FALSE;
 uint8_t mouseCycle = 2;
 int8_t mouseBytes[3];
-int64_t mouseX = 0;
-int64_t mouseY = 0;
 BOOLEAN lastLeftClick = FALSE;
 BOOLEAN lastRightClick = FALSE;
 
@@ -283,7 +281,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
         if (iterator->Type == EfiConventionalMemory)
         {
-            memory = (void*)iterator->PhysicalStart;
+            allocated = (BOOLEAN*)iterator->PhysicalStart;
+            memory = allocated + 1000000000;
         }
     }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
@@ -362,6 +361,8 @@ __attribute__((interrupt)) void keyboard(struct InterruptFrame* frame)
     outb(0x20, 0x20);
 }
 
+void mouseMove(int8_t x, int8_t y);
+
 void mouseClick(BOOLEAN left, BOOLEAN unpressed);
 
 __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
@@ -371,24 +372,7 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
     if (mouseCycle == 3)
     {
         mouseCycle = 0;
-        mouseX += mouseBytes[1];
-        if (mouseX < 0)
-        {
-            mouseX = 0;
-        }
-        if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
-        {
-            mouseX = GOP->Mode->Info->HorizontalResolution - 16;
-        }
-        mouseY -= mouseBytes[2];
-        if (mouseY < 0)
-        {
-            mouseY = 0;
-        }
-        if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
-        {
-            mouseY = GOP->Mode->Info->VerticalResolution - 16;
-        }
+        mouseMove(mouseBytes[1], mouseBytes[2]);
         BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
         if (leftClick != lastLeftClick)
         {

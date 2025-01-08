@@ -23,8 +23,39 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
 BOOLEAN started = FALSE;
 BOOLEAN mainButtonActivated = FALSE;
+struct Window windows;
 
-uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2)
+struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
+{
+    struct Window* window = &windows;
+    while (window->next)
+    {
+        window = window->next;
+    }
+    window->next = allocate(sizeof(struct Window));
+    window->next->x = GOP->Mode->Info->HorizontalResolution / 2 - width / 2;
+    window->next->y = GOP->Mode->Info->VerticalResolution / 2 - height / 2;
+    window->next->width = width;
+    window->next->height = height;
+    window->next->title = title;
+    window->next->buffer = allocate(width * height * 4);
+    window->next->next = NULL;
+    return window->next;
+}
+
+void unallocateWindow(struct Window* window)
+{
+    struct Window* current = &windows;
+    while (current->next != window)
+    {
+        current = current->next;
+    }
+    unallocate(current->next->buffer, current->next->width * current->next->height * 4);
+    unallocate(current->next, sizeof(struct Window));
+    current->next = current->next->next;
+}
+
+uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3)
 {
     switch (code)
     {
@@ -33,6 +64,13 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2)
             break;
         case 1:
             unallocate((void*)arg1, arg2);
+            return 0;
+            break;
+        case 2:
+            return (uint64_t)allocateWindow(arg1, arg2, (CHAR16*)arg3);
+            break;
+        case 3:
+            unallocateWindow((struct Window*)arg1);
             return 0;
             break;
     }
@@ -118,10 +156,10 @@ void start()
         registerButton(&button);
         drawMouse();
         waitForPit();
-        blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);
+        blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
         endButtons();
     }
-    while (1)
+    while (TRUE)
     {
         startButtons();
         blit(wallpaper, videoBuffer);
@@ -157,9 +195,21 @@ void start()
             drawImage(button.x, button.y, button.width, button.height, programs[i].icon);
             registerButton(&button);
         }
+        struct Window* window = &windows;
+        while (TRUE)
+        {
+            window = window->next;
+            if (window == NULL)
+            {
+                break;
+            }
+            drawRectangle(window->x, window->y, window->width + 10, window->height + 52, grey);
+            drawString(window->title, window->x + 10, window->y + 10, black);
+            drawImage(window->x + 5, window->y + 47, window->width, window->height, window->buffer);
+        }
         drawMouse();
         waitForPit();
-        blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);
+        blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
         endButtons();
     }
 }

@@ -1,5 +1,4 @@
-#include <efi.h>
-#include <efilib.h>
+#include "shared.h"
 
 extern void syscallHandler();
 
@@ -92,7 +91,7 @@ void unallocate(void* pointer, uint64_t amount)
     }
 }
 
-void blit(void* source, void* destination)
+void blit(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* source, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)
 {
     uint64_t* to = (uint64_t*)destination;
     uint64_t* from = (uint64_t*)source;
@@ -236,7 +235,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     InitializeLib(ImageHandle, SystemTable);
     LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
     videoBuffer = AllocateZeroPool(GOP->Mode->FrameBufferSize);
-    blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);
+    blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
     EFI_LOADED_IMAGE* image = NULL;
     uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
@@ -437,13 +436,13 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2);
+uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3);
 
 void start();
 
 void completed()
 {
-    __asm__ ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
+    __asm__ volatile ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
     outb(0x21, 0x20);

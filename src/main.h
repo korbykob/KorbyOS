@@ -3,8 +3,8 @@
 
 extern void syscallHandler();
 
-EFI_MEMORY_DESCRIPTOR* descriptor;
-uint64_t allocated = 0;
+void* memory = NULL;
+BOOLEAN allocated[2000000];
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
@@ -55,11 +55,41 @@ uint64_t buttonCountBuffer = 0;
 struct Button buttons[100];
 uint64_t buttonCount = 0;
 
-void* alloc(uint64_t amount)
+void* allocate(uint64_t amount)
 {
-    void* value = (void*)(descriptor->PhysicalStart + allocated);
-    allocated += amount;
-    return value;
+    BOOLEAN* test = allocated;
+    uint64_t value = 0;
+    retry:
+    while (*test)
+    {
+        test++;
+        value++;
+    }
+    uint64_t size = 0;
+    while (!*test && size != amount)
+    {
+        test++;
+        size++;
+    }
+    if (!*test)
+    {
+        test = allocated + value;
+        for (uint64_t i = 0; i < amount; i++)
+        {
+            *test++ = TRUE;
+        }
+        return memory + value;
+    }
+    goto retry;
+}
+
+void unallocate(void* pointer, uint64_t amount)
+{
+    BOOLEAN* room = allocated + (pointer - memory);
+    for (uint64_t i = 0; i < amount; i++)
+    {
+        *room++ = FALSE;
+    }
 }
 
 void blit(void* source, void* destination)
@@ -284,7 +314,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
         if (iterator->Type == EfiConventionalMemory)
         {
-            descriptor = iterator;
+            memory = (void*)iterator->PhysicalStart;
         }
     }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
@@ -407,7 +437,7 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-uint64_t syscallHandle(uint64_t code, uint64_t arg);
+uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2);
 
 void start();
 

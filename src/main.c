@@ -43,6 +43,30 @@ void keyPress(uint8_t scancode, BOOLEAN unpressed)
     }
 }
 
+void buttonClick(uint64_t id)
+{
+    switch (id)
+    {
+        case 0:
+            started = TRUE;
+            break;
+        case 1:
+            mainButtonActivated = !mainButtonActivated;
+            break;
+        default:
+            if (programs[id - 2].running)
+            {
+                programs[id - 2].stop();
+            }
+            else
+            {
+                programs[id - 2].start();
+            }
+            programs[id - 2].running = !programs[id - 2].running;
+            break;
+    }
+}
+
 void drawMouse()
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
@@ -71,16 +95,6 @@ void drawMouse()
     }
 }
 
-void startButtonClick()
-{
-    started = TRUE;
-}
-
-void mainButtonClick()
-{
-    mainButtonActivated = !mainButtonActivated;
-}
-
 void start()
 {
     while (!started)
@@ -94,7 +108,7 @@ void start()
         button.y = GOP->Mode->Info->VerticalResolution / 2 + 24;
         button.width = 96;
         button.height = 48;
-        button.action = startButtonClick;
+        button.id = 0;
         drawRectangle(button.x, button.y, button.width, button.height, grey);
         drawString(L"Start", GOP->Mode->Info->HorizontalResolution / 2 - 40, GOP->Mode->Info->VerticalResolution / 2 + 32, black);
         registerButton(&button);
@@ -108,22 +122,36 @@ void start()
         startButtons();
         blit(wallpaper, videoBuffer);
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-        struct Button button;
-        button.x = 4;
-        button.y = GOP->Mode->Info->VerticalResolution - 28;
-        button.width = 24;
-        button.height = 24;
-        button.action = mainButtonClick;
-        drawRectangle(button.x, button.y, button.width, button.height, mainButtonActivated ? black : white);
-        registerButton(&button);
+        struct Button mainButton;
+        mainButton.x = 4;
+        mainButton.y = GOP->Mode->Info->VerticalResolution - 28;
+        mainButton.width = 24;
+        mainButton.height = 24;
+        mainButton.id = 1;
+        drawRectangle(mainButton.x, mainButton.y, mainButton.width, mainButton.height, mainButtonActivated ? black : white);
+        registerButton(&mainButton);
         if (mainButtonActivated)
         {
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 432, 300, 400, grey);
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 33, 300, 1, black);
         }
-        CHAR16 characters[100];
-        ValueToString(characters, FALSE, allocated);
-        drawString(characters, 0, 0, white);
+        drawRectangle(32, GOP->Mode->Info->VerticalResolution - 28, 1, 24, black);
+        for (uint8_t i = 0; i < 1; i++)
+        {
+            struct Button button;
+            button.x = 37 + i * 24 + i * 8;
+            button.y = GOP->Mode->Info->VerticalResolution - 28;
+            button.width = 24;
+            button.height = 24;
+            button.id = i + 2;
+            drawImage(button.x, button.y, button.width, button.height, programs[i].icon);
+            if (programs[i].running)
+            {
+                drawRectangle(button.x + 6, GOP->Mode->Info->VerticalResolution - 2, 12, 1, black);
+                programs[i].update();
+            }
+            registerButton(&button);
+        }
         drawMouse();
         waitForPit();
         blit(videoBuffer, (void*)GOP->Mode->FrameBufferBase);

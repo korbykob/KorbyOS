@@ -10,5 +10,5 @@ objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -
 nasm -f elf64 src/programs/test.asm -o bin/programs/testasm.o
 gcc -Ignu-efi/inc -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -mgeneral-regs-only -c src/programs/test.c -o bin/programs/test.o
 ld -o bin/programs/test.bin -Ttext 0x0 --oformat binary bin/programs/testasm.o bin/programs/test.o
-uefi-run -b OVMF-pure-efi.fd -d -f src/font.psf -f src/wallpaper.bmp -f bin/programs/test.bmp -f bin/programs/test.bin bin/main.efi -- -enable-kvm -m 16G -cpu host -monitor stdio
+uefi-run -b OVMF-pure-efi.fd -d -f src/font.psf -f src/wallpaper.bmp -f src/programs/test.bmp -f bin/programs/test.bin bin/main.efi -- -enable-kvm -m 16G -cpu host -monitor stdio
 echo

@@ -11,9 +11,11 @@ uint8_t* font = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24][24];
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24*24];
     void (*start)();
     void (*update)();
+    void (*stop)();
+    BOOLEAN running;
 } programs[1];
 struct
 {
@@ -46,12 +48,12 @@ struct Button
     uint32_t y;
     uint32_t width;
     uint32_t height;
-    void* action;
+    uint64_t id;
 };
 struct Button buttonsBuffer[100];
-uint8_t buttonCountBuffer = 0;
+uint64_t buttonCountBuffer = 0;
 struct Button buttons[100];
-uint8_t buttonCount = 0;
+uint64_t buttonCount = 0;
 
 void* alloc(uint64_t amount)
 {
@@ -153,6 +155,20 @@ void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_
     }
 }
 
+void drawImage(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer)
+{
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* from = buffer;
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* to = videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x;
+    for (uint32_t y = 0; y < height; y++)
+    {
+        for (uint32_t x = 0; x < width; x++)
+        {
+            *to++ = *from++;
+        }
+        to += GOP->Mode->Info->HorizontalResolution - width;
+    }
+}
+
 void startButtons()
 {
     buttonCountBuffer = 0;
@@ -166,7 +182,7 @@ void registerButton(struct Button* button)
 
 void endButtons()
 {
-    for (uint8_t i = 0; i < buttonCountBuffer; i++)
+    for (uint64_t i = 0; i < buttonCountBuffer; i++)
     {
         buttons[i] = buttonsBuffer[i];
     }
@@ -234,14 +250,17 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* bmpFile = AllocatePool(bmpSize);
     uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmpFile);
     uefi_call_wrapper(file->Close, 1, file);
-    for (uint32_t y = 0; y < 24; y++)
+    uint16_t pixel = 0;
+    fileBuffer = bmpFile + 0x36;
+    for (uint8_t y = 0; y < 24; y++)
     {
-        for (uint32_t x = 0; x < 24; x++)
+        for (uint8_t x = 0; x < 24; x++)
         {
             uint64_t index = ((23 - y) * 24 + x) * 3;
-            programs[0].icon.Blue = fileBuffer[index];
-            programs[0].icon.Green = fileBuffer[index + 1];
-            programs[0].icon.Red = fileBuffer[index + 2];
+            programs[0].icon[pixel].Blue = fileBuffer[index];
+            programs[0].icon[pixel].Green = fileBuffer[index + 1];
+            programs[0].icon[pixel].Red = fileBuffer[index + 2];
+            pixel++;
         }
     }
     FreePool(bmpFile);
@@ -251,6 +270,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     FreePool(info);
     programs[0].start = AllocatePool(testSize);
     programs[0].update = programs[0].start + 5;
+    programs[0].stop = programs[0].start + 10;
+    programs[0].running = FALSE;
     uefi_call_wrapper(file->Read, 3, file, &testSize, programs[0].start);
     uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
@@ -342,6 +363,8 @@ __attribute__((interrupt)) void keyboard(struct InterruptFrame* frame)
     outb(0x20, 0x20);
 }
 
+void buttonClick(uint64_t id);
+
 __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
 {
     mouseBytes[mouseCycle] = inb(0x60);
@@ -374,7 +397,7 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
             {
                 if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
                 {
-                    ((void (*)())buttons[i].action)();
+                    buttonClick(buttons[i].id);
                 }
             }
         }

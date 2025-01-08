@@ -30,26 +30,9 @@ struct Button
     uint64_t id;
 };
 struct Button buttons[100];
-uint64_t buttonCount = 0;
-uint64_t buttonCountBuffer = 0;
+uint8_t buttonCount = 0;
 BOOLEAN mainButtonActivated = FALSE;
 struct Window windows;
-
-void startButtons()
-{
-    buttonCountBuffer = 0;
-}
-
-void registerButton(struct Button* button)
-{
-    buttons[buttonCountBuffer] = *button;
-    buttonCountBuffer++;
-}
-
-void endButtons()
-{
-    buttonCount = buttonCountBuffer;
-}
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
@@ -113,30 +96,38 @@ void keyPress(uint8_t scancode, BOOLEAN unpressed)
 
 void mouseClick(BOOLEAN left, BOOLEAN unpressed)
 {
-    if (left && !unpressed)
+    if (left)
     {
-        for (uint8_t i = 0; i < buttonCount; i++)
+        if (!unpressed)
         {
-            if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
+            for (uint8_t i = 0; i < buttonCount; i++)
             {
-                switch (buttons[i].id)
+                if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
                 {
-                    case 0:
-                        mainButtonActivated = !mainButtonActivated;
-                        break;
-                    default:
-                        if (programs[buttons[i].id - 1].running)
-                        {
-                            programs[buttons[i].id - 1].stop();
-                        }
-                        else
-                        {
-                            programs[buttons[i].id - 1].start();
-                        }
-                        programs[buttons[i].id - 1].running = !programs[buttons[i].id - 1].running;
-                        break;
+                    switch (buttons[i].id)
+                    {
+                        case 0:
+                            mainButtonActivated = !mainButtonActivated;
+                            break;
+                        default:
+                            if (programs[buttons[i].id - 1].running)
+                            {
+                                programs[buttons[i].id - 1].stop();
+                            }
+                            else
+                            {
+                                programs[buttons[i].id - 1].start();
+                            }
+                            programs[buttons[i].id - 1].running = !programs[buttons[i].id - 1].running;
+                            break;
+                    }
                 }
             }
+
+        }
+        else
+        {
+
         }
     }
 }
@@ -173,7 +164,6 @@ void start()
 {
     while (TRUE)
     {
-        startButtons();
         blit(wallpaper, videoBuffer);
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
         if (mainButtonActivated)
@@ -189,8 +179,9 @@ void start()
         mainButton.height = 24;
         mainButton.id = 0;
         drawRectangle(mainButton.x, mainButton.y, mainButton.width, mainButton.height, white);
-        registerButton(&mainButton);
+        buttons[0] = mainButton;
         drawRectangle(32, GOP->Mode->Info->VerticalResolution - 28, 1, 24, black);
+        uint8_t buttonCountBuffer = 1;
         for (uint8_t i = 0; i < 1; i++)
         {
             struct Button button;
@@ -205,8 +196,10 @@ void start()
                 drawRectangle(button.x - 2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
             }
             drawImage(button.x, button.y, button.width, button.height, programs[i].icon);
-            registerButton(&button);
+            buttons[buttonCountBuffer] = button;
+            buttonCountBuffer++;
         }
+        buttonCount = buttonCountBuffer;
         struct Window* window = &windows;
         while (TRUE)
         {
@@ -222,6 +215,5 @@ void start()
         drawMouse();
         waitForPit();
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
-        endButtons();
     }
 }

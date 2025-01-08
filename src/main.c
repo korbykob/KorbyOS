@@ -21,9 +21,35 @@ uint8_t mouseIcon[] = {
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
-BOOLEAN started = FALSE;
+struct Button
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
+    uint64_t id;
+};
+struct Button buttons[100];
+uint64_t buttonCount = 0;
+uint64_t buttonCountBuffer = 0;
 BOOLEAN mainButtonActivated = FALSE;
 struct Window windows;
+
+void startButtons()
+{
+    buttonCountBuffer = 0;
+}
+
+void registerButton(struct Button* button)
+{
+    buttons[buttonCountBuffer] = *button;
+    buttonCountBuffer++;
+}
+
+void endButtons()
+{
+    buttonCount = buttonCountBuffer;
+}
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
@@ -85,27 +111,33 @@ void keyPress(uint8_t scancode, BOOLEAN unpressed)
     }
 }
 
-void buttonClick(uint64_t id)
+void mouseClick(BOOLEAN left, BOOLEAN unpressed)
 {
-    switch (id)
+    if (left && !unpressed)
     {
-        case 0:
-            started = TRUE;
-            break;
-        case 1:
-            mainButtonActivated = !mainButtonActivated;
-            break;
-        default:
-            if (programs[id - 2].running)
+        for (uint8_t i = 0; i < buttonCount; i++)
+        {
+            if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
             {
-                programs[id - 2].stop();
+                switch (buttons[i].id)
+                {
+                    case 0:
+                        mainButtonActivated = !mainButtonActivated;
+                        break;
+                    default:
+                        if (programs[buttons[i].id - 1].running)
+                        {
+                            programs[buttons[i].id - 1].stop();
+                        }
+                        else
+                        {
+                            programs[buttons[i].id - 1].start();
+                        }
+                        programs[buttons[i].id - 1].running = !programs[buttons[i].id - 1].running;
+                        break;
+                }
             }
-            else
-            {
-                programs[id - 2].start();
-            }
-            programs[id - 2].running = !programs[id - 2].running;
-            break;
+        }
     }
 }
 
@@ -139,26 +171,6 @@ void drawMouse()
 
 void start()
 {
-    while (!started)
-    {
-        startButtons();
-        blit(wallpaper, videoBuffer);
-        drawRectangle(GOP->Mode->Info->HorizontalResolution / 2 - 160, GOP->Mode->Info->VerticalResolution / 2 - 40, 320, 48, grey);
-        drawString(L"Welcome to KorbyOS!", GOP->Mode->Info->HorizontalResolution / 2 - 152, GOP->Mode->Info->VerticalResolution / 2 - 32, black);
-        struct Button button;
-        button.x = GOP->Mode->Info->HorizontalResolution / 2 - 48;
-        button.y = GOP->Mode->Info->VerticalResolution / 2 + 24;
-        button.width = 96;
-        button.height = 48;
-        button.id = 0;
-        drawRectangle(button.x, button.y, button.width, button.height, grey);
-        drawString(L"Start", GOP->Mode->Info->HorizontalResolution / 2 - 40, GOP->Mode->Info->VerticalResolution / 2 + 32, black);
-        registerButton(&button);
-        drawMouse();
-        waitForPit();
-        blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
-        endButtons();
-    }
     while (TRUE)
     {
         startButtons();
@@ -175,7 +187,7 @@ void start()
         mainButton.y = GOP->Mode->Info->VerticalResolution - 28;
         mainButton.width = 24;
         mainButton.height = 24;
-        mainButton.id = 1;
+        mainButton.id = 0;
         drawRectangle(mainButton.x, mainButton.y, mainButton.width, mainButton.height, white);
         registerButton(&mainButton);
         drawRectangle(32, GOP->Mode->Info->VerticalResolution - 28, 1, 24, black);
@@ -186,7 +198,7 @@ void start()
             button.y = GOP->Mode->Info->VerticalResolution - 28;
             button.width = 24;
             button.height = 24;
-            button.id = i + 2;
+            button.id = i + 1;
             if (programs[i].running)
             {
                 programs[i].update();

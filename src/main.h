@@ -40,19 +40,8 @@ uint8_t mouseCycle = 2;
 int8_t mouseBytes[3];
 int64_t mouseX = 0;
 int64_t mouseY = 0;
-BOOLEAN leftClickDebounce = FALSE;
-struct Button
-{
-    uint32_t x;
-    uint32_t y;
-    uint32_t width;
-    uint32_t height;
-    uint64_t id;
-};
-struct Button buttonsBuffer[100];
-uint64_t buttonCountBuffer = 0;
-struct Button buttons[100];
-uint64_t buttonCount = 0;
+BOOLEAN lastLeftClick = FALSE;
+BOOLEAN lastRightClick = FALSE;
 
 void* allocate(uint64_t amount)
 {
@@ -196,26 +185,6 @@ void drawImage(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAP
         }
         to += GOP->Mode->Info->HorizontalResolution - width;
     }
-}
-
-void startButtons()
-{
-    buttonCountBuffer = 0;
-}
-
-void registerButton(struct Button* button)
-{
-    buttonsBuffer[buttonCountBuffer] = *button;
-    buttonCountBuffer++;
-}
-
-void endButtons()
-{
-    for (uint64_t i = 0; i < buttonCountBuffer; i++)
-    {
-        buttons[i] = buttonsBuffer[i];
-    }
-    buttonCount = buttonCountBuffer;
 }
 
 void waitForKey()
@@ -393,7 +362,7 @@ __attribute__((interrupt)) void keyboard(struct InterruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-void buttonClick(uint64_t id);
+void mouseClick(BOOLEAN left, BOOLEAN unpressed);
 
 __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
 {
@@ -402,7 +371,6 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
     if (mouseCycle == 3)
     {
         mouseCycle = 0;
-        BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
         mouseX += mouseBytes[1];
         if (mouseX < 0)
         {
@@ -421,17 +389,18 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
         {
             mouseY = GOP->Mode->Info->VerticalResolution - 16;
         }
-        if (leftClick && !leftClickDebounce)
+        BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
+        if (leftClick != lastLeftClick)
         {
-            for (uint8_t i = 0; i < buttonCount; i++)
-            {
-                if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
-                {
-                    buttonClick(buttons[i].id);
-                }
-            }
+            mouseClick(TRUE, lastLeftClick);
+            lastLeftClick = leftClick;
         }
-        leftClickDebounce = leftClick;
+        BOOLEAN rightClick = mouseBytes[0] & 0b00000010;
+        if (rightClick != lastRightClick)
+        {
+            mouseClick(FALSE, lastRightClick);
+            lastRightClick = rightClick;
+        }
     }
     outb(0xA0, 0x20);
     outb(0x20, 0x20);

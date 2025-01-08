@@ -5,7 +5,7 @@ uint8_t gradient;
 
 void _start()
 {
-    window = allocateWindow(500, 500, L"Cyberpunk 2077");
+    window = allocateWindow(500, 500, L"Window test");
     gradient = 0;
 }
 
@@ -19,7 +19,7 @@ void update()
     colours[0] = colour;
     colours[1] = colour;
     uint64_t* buffer = (uint64_t*)window->buffer;
-    for (uint64_t i = 0; i < 125000; i++)
+    for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
     {
         *buffer++ = *(uint64_t*)colours;
     }

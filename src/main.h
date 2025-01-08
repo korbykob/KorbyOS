@@ -234,6 +234,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
     LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
+    uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
     videoBuffer = AllocateZeroPool(GOP->Mode->FrameBufferSize);
     blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
     EFI_LOADED_IMAGE* image = NULL;

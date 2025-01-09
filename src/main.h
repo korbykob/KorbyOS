@@ -4,6 +4,7 @@ extern void syscallHandler();
 
 void* memory = NULL;
 BOOLEAN* allocated = NULL;
+uint64_t cleared = 0;
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
@@ -48,33 +49,44 @@ void* allocate(uint64_t amount)
     retry:
     while (*test)
     {
-        test++;
+        if (value == cleared)
+        {
+            cleared = value + amount;
+            goto done;
+        }
+        test--;
         value++;
     }
     uint64_t size = 0;
-    while (!*test && size != amount)
+    while (size != amount)
     {
-        test++;
+        if (value + size == cleared)
+        {
+            cleared = value + amount;
+            goto done;
+        }
+        if (*test)
+        {
+            goto retry;
+        }
+        test--;
         size++;
     }
-    if (!*test)
+    done:
+    test = allocated - value;
+    for (uint64_t i = 0; i < amount; i++)
     {
-        test = allocated + value;
-        for (uint64_t i = 0; i < amount; i++)
-        {
-            *test++ = TRUE;
-        }
-        return memory + value;
+        *test-- = TRUE;
     }
-    goto retry;
+    return memory + value;
 }
 
 void unallocate(void* pointer, uint64_t amount)
 {
-    BOOLEAN* room = allocated + (pointer - memory);
+    BOOLEAN* room = allocated - (pointer - memory);
     for (uint64_t i = 0; i < amount; i++)
     {
-        *room++ = FALSE;
+        *room-- = FALSE;
     }
 }
 
@@ -281,8 +293,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
         if (iterator->Type == EfiConventionalMemory)
         {
-            allocated = (BOOLEAN*)iterator->PhysicalStart;
-            memory = allocated + 1000000000;
+            memory = (void*)iterator->PhysicalStart;
+            allocated = (BOOLEAN*)((iterator->PhysicalStart + iterator->NumberOfPages * EFI_PAGE_SIZE) - 1);
         }
     }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);

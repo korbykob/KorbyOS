@@ -43,8 +43,8 @@ struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
         window = window->next;
     }
     window->next = allocate(sizeof(struct Window));
-    window->next->x = 0;
-    window->next->y = 0;
+    window->next->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 10) / 2;
+    window->next->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 47) / 2;
     window->next->width = width;
     window->next->height = height;
     window->next->title = title;

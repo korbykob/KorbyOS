@@ -33,7 +33,6 @@ struct Button
 };
 struct Button buttons[100];
 uint8_t buttonCount = 0;
-BOOLEAN mainButtonActivated = FALSE;
 struct Window windows;
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
@@ -90,10 +89,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
 
 void keyPress(uint8_t scancode, BOOLEAN unpressed)
 {
-    if (!unpressed && scancode == 91)
-    {
-        mainButtonActivated = !mainButtonActivated;
-    }
+    
 }
 
 void mouseMove(int8_t x, int8_t y)
@@ -158,23 +154,15 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
             {
                 if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
                 {
-                    switch (buttons[i].id)
+                    if (programs[buttons[i].id].running)
                     {
-                        case 0:
-                            mainButtonActivated = !mainButtonActivated;
-                            break;
-                        default:
-                            if (programs[buttons[i].id - 1].running)
-                            {
-                                programs[buttons[i].id - 1].stop();
-                            }
-                            else
-                            {
-                                programs[buttons[i].id - 1].start();
-                            }
-                            programs[buttons[i].id - 1].running = !programs[buttons[i].id - 1].running;
-                            break;
+                        programs[buttons[i].id].stop();
                     }
+                    else
+                    {
+                        programs[buttons[i].id].start();
+                    }
+                    programs[buttons[i].id].running = !programs[buttons[i].id].running;
                 }
             }
             struct Window* window = &windows;
@@ -253,12 +241,6 @@ void start()
             drawImage(window->x + 5, window->y + 42, window->width, window->height, window->buffer);
         }
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-        if (mainButtonActivated)
-        {
-            drawRectangle(0, GOP->Mode->Info->VerticalResolution - 432, 300, 400, grey);
-            drawRectangle(0, GOP->Mode->Info->VerticalResolution - 33, 300, 1, black);
-            drawRectangle(2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
-        }
         struct Button mainButton;
         mainButton.x = 4;
         mainButton.y = GOP->Mode->Info->VerticalResolution - 28;
@@ -266,17 +248,15 @@ void start()
         mainButton.height = 24;
         mainButton.id = 0;
         drawRectangle(mainButton.x, mainButton.y, mainButton.width, mainButton.height, white);
-        buttons[0] = mainButton;
-        drawRectangle(32, GOP->Mode->Info->VerticalResolution - 28, 1, 24, black);
-        uint8_t buttonCountBuffer = 1;
+        uint8_t buttonCountBuffer = 0;
         for (uint8_t i = 0; i < 1; i++)
         {
             struct Button button;
-            button.x = 37 + i * 24 + i * 8;
+            button.x = 4 + i * 24 + i * 8;
             button.y = GOP->Mode->Info->VerticalResolution - 28;
             button.width = 24;
             button.height = 24;
-            button.id = i + 1;
+            button.id = i;
             if (programs[i].running)
             {
                 programs[i].update();

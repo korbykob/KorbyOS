@@ -225,6 +225,8 @@ void drawMouse()
 
 void start()
 {
+    mouseX = GOP->Mode->Info->HorizontalResolution / 2;
+    mouseY = GOP->Mode->Info->VerticalResolution / 2;
     while (TRUE)
     {
         blit(wallpaper, videoBuffer);

@@ -421,7 +421,7 @@ void completed()
     outb(0xA1, 0xFF);
     unmaskInterrupt(2);
     outb(0x43, 0x34);
-    uint16_t divisor = 1193180 / 60;
+    uint16_t divisor = 1193180 / 30;
     outb(0x40, divisor & 0xFF);
     outb(0x40, (divisor >> 8) & 0xFF);
     installInterrupt(0, pit, TRUE);

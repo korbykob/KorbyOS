@@ -90,6 +90,33 @@ void unallocate(void* pointer, uint64_t amount)
     }
 }
 
+void* addItem(void* list, uint64_t size)
+{
+    while (*(void**)list)
+    {
+        list = *(void**)list;
+    }
+    *(void**)list = allocate(size);
+    **(void***)list = NULL;
+    return *(void**)list;
+}
+
+void removeItem(void* list, void* item, uint64_t size)
+{
+    while (*(void**)list != item)
+    {
+        list = *(void**)list;
+    }
+    unallocate(*(void**)list, size);
+    *(void**)list = **(void***)list;
+}
+
+BOOLEAN iterateList(void** iterator)
+{
+    *iterator = **(void***)iterator;
+    return *iterator != NULL;
+}
+
 void blit(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* source, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)
 {
     uint64_t* to = (uint64_t*)destination;

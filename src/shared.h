@@ -3,6 +3,7 @@
 
 struct Window
 {
+    struct Window* next;
     int64_t x;
     int64_t y;
     uint32_t width;
@@ -10,5 +11,4 @@ struct Window
     CHAR16* title;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
     BOOLEAN dragging;
-    struct Window* next;
 };

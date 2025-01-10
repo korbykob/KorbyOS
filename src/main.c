@@ -37,32 +37,20 @@ struct Window windows;
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
-    struct Window* window = &windows;
-    while (window->next)
-    {
-        window = window->next;
-    }
-    window->next = allocate(sizeof(struct Window));
-    window->next->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 10) / 2;
-    window->next->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 47) / 2;
-    window->next->width = width;
-    window->next->height = height;
-    window->next->title = title;
-    window->next->buffer = allocate(width * height * 4);
-    window->next->next = NULL;
-    return window->next;
+    struct Window* window = addItem(&windows, sizeof(struct Window));
+    window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 10) / 2;
+    window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 47) / 2;
+    window->width = width;
+    window->height = height;
+    window->title = title;
+    window->buffer = allocate(width * height * 4);
+    return window;
 }
 
 void unallocateWindow(struct Window* window)
 {
-    struct Window* current = &windows;
-    while (current->next != window)
-    {
-        current = current->next;
-    }
-    unallocate(current->next->buffer, current->next->width * current->next->height * 4);
-    unallocate(current->next, sizeof(struct Window));
-    current->next = current->next->next;
+    unallocate(window->buffer, window->width * window->height * 4);
+    removeItem(&windows, window, sizeof(struct Window));
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3)
@@ -113,13 +101,8 @@ void mouseMove(int8_t x, int8_t y)
         mouseY = GOP->Mode->Info->VerticalResolution - 16;
     }
     struct Window* window = &windows;
-    while (TRUE)
+    while (iterateList((void**)&window))
     {
-        window = window->next;
-        if (window == NULL)
-        {
-            break;
-        }
         if (window->dragging)
         {
             window->x += x;
@@ -166,13 +149,8 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
                 }
             }
             struct Window* window = &windows;
-            while (TRUE)
+            while (iterateList((void**)&window))
             {
-                window = window->next;
-                if (window == NULL)
-                {
-                    break;
-                }
                 if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 42)
                 {
                     window->dragging = TRUE;
@@ -182,13 +160,8 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
         else
         {
             struct Window* window = &windows;
-            while (TRUE)
+            while (iterateList((void**)&window))
             {
-                window = window->next;
-                if (window == NULL)
-                {
-                    break;
-                }
                 window->dragging = FALSE;
             }
         }
@@ -230,14 +203,10 @@ void start()
     while (TRUE)
     {
         blit(wallpaper, videoBuffer);
+        void* iterator = NULL;
         struct Window* window = &windows;
-        while (TRUE)
+        while (iterateList((void**)&window))
         {
-            window = window->next;
-            if (window == NULL)
-            {
-                break;
-            }
             drawRectangle(window->x, window->y, window->width + 10, window->height + 47, grey);
             drawString(window->title, window->x + 5, window->y + 5, black);
             drawImage(window->x + 5, window->y + 42, window->width, window->height, window->buffer);

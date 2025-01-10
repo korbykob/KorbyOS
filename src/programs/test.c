@@ -13,9 +13,9 @@ void _start()
 
 void update()
 {
-    for (uint16_t y = 0; y < 360; y++)
+    for (uint32_t y = 0; y < window->height; y++)
     {
-        for (uint16_t x = 0; x < 640; x++)
+        for (uint32_t x = 0; x < window->width; x++)
         {
             window->buffer[y * window->width + x] = colour;
         }

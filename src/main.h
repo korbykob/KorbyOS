@@ -114,7 +114,7 @@ void removeItem(void* list, void* item, uint64_t size)
 BOOLEAN iterateList(void** iterator)
 {
     *iterator = **(void***)iterator;
-    return *iterator != NULL;
+    return *iterator;
 }
 
 void blit(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* source, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)

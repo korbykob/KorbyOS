@@ -33,11 +33,12 @@ struct Button
 };
 struct Button buttons[100];
 uint8_t buttonCount = 0;
-struct Window windows;
+struct Window* windows = NULL;
+struct Window* dragging = NULL;
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
-    struct Window* window = addItem(&windows, sizeof(struct Window));
+    struct Window* window = addItem(windows, sizeof(struct Window));
     window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 10) / 2;
     window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 47) / 2;
     window->width = width;
@@ -50,7 +51,7 @@ struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 void unallocateWindow(struct Window* window)
 {
     unallocate(window->buffer, window->width * window->height * 4);
-    removeItem(&windows, window, sizeof(struct Window));
+    removeItem(windows, window, sizeof(struct Window));
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3)
@@ -100,29 +101,25 @@ void mouseMove(int8_t x, int8_t y)
     {
         mouseY = GOP->Mode->Info->VerticalResolution - 16;
     }
-    struct Window* window = &windows;
-    while (iterateList((void**)&window))
+    if (dragging != NULL)
     {
-        if (window->dragging)
+        dragging->x += x;
+        if (dragging->x < 0)
         {
-            window->x += x;
-            if (window->x < 0)
-            {
-                window->x = 0;
-            }
-            if (window->x > GOP->Mode->Info->HorizontalResolution - window->width - 10)
-            {
-                window->x = GOP->Mode->Info->HorizontalResolution - window->width - 10;
-            }
-            window->y -= y;
-            if (window->y < 0)
-            {
-                window->y = 0;
-            }
-            if (window->y > GOP->Mode->Info->VerticalResolution - window->height - 79)
-            {
-                window->y = GOP->Mode->Info->VerticalResolution - window->height - 79;
-            }
+            dragging->x = 0;
+        }
+        if (dragging->x > GOP->Mode->Info->HorizontalResolution - dragging->width - 10)
+        {
+            dragging->x = GOP->Mode->Info->HorizontalResolution - dragging->width - 10;
+        }
+        dragging->y -= y;
+        if (dragging->y < 0)
+        {
+            dragging->y = 0;
+        }
+        if (dragging->y > GOP->Mode->Info->VerticalResolution - dragging->height - 79)
+        {
+            dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 79;
         }
     }
 }
@@ -148,22 +145,19 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
                     programs[buttons[i].id].running = !programs[buttons[i].id].running;
                 }
             }
-            struct Window* window = &windows;
+            struct Window* window = windows;
             while (iterateList((void**)&window))
             {
                 if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 42)
                 {
-                    window->dragging = TRUE;
+                    dragging = window;
+                    break;
                 }
             }
         }
         else
         {
-            struct Window* window = &windows;
-            while (iterateList((void**)&window))
-            {
-                window->dragging = FALSE;
-            }
+            dragging = NULL;
         }
     }
 }
@@ -204,7 +198,7 @@ void start()
     {
         blit(wallpaper, videoBuffer);
         void* iterator = NULL;
-        struct Window* window = &windows;
+        struct Window* window = windows;
         while (iterateList((void**)&window))
         {
             drawRectangle(window->x, window->y, window->width + 10, window->height + 47, grey);

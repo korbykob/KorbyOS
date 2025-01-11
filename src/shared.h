@@ -10,5 +10,4 @@ struct Window
     uint32_t height;
     CHAR16* title;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
-    BOOLEAN dragging;
 };

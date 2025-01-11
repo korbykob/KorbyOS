@@ -46,6 +46,7 @@ struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
     window->height = height;
     window->title = title;
     window->buffer = allocate(width * height * 4);
+    window->events.next = NULL;
     focus = window;
     return window;
 }
@@ -84,7 +85,13 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
 
 void keyPress(uint8_t scancode, BOOLEAN unpressed)
 {
-    
+    if (focus)
+    {
+        struct KeyEvent* event = addItem(&focus->events, sizeof(struct KeyEvent));
+        event->id = 0;
+        event->scancode = scancode;
+        event->unpressed = unpressed;
+    }
 }
 
 void mouseMove(int8_t x, int8_t y)

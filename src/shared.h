@@ -24,6 +24,13 @@ struct KeyEvent
     uint8_t scancode;
     BOOLEAN unpressed;
 };
+struct ClickEvent
+{
+    struct Event* next;
+    uint8_t id;
+    BOOLEAN left;
+    BOOLEAN unpressed;
+};
 
 void* allocate(uint64_t amount);
 

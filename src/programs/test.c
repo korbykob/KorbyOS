@@ -29,6 +29,14 @@ void update()
                 removeItem(&window->events, event, sizeof(struct KeyEvent));
                 event = lastEvent;
                 break;
+            case 1:
+                if (!((struct ClickEvent*)event)->unpressed)
+                {
+                    shift = !shift;
+                }
+                removeItem(&window->events, event, sizeof(struct ClickEvent));
+                event = lastEvent;
+                break;
         }
         lastEvent = event;
     }

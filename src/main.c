@@ -174,6 +174,13 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
             dragging = NULL;
         }
     }
+    if (focus && mouseX >= focus->x + 5 && mouseX < focus->x + focus->width + 5 && mouseY >= focus->y + 42 && mouseY < focus->y + 42 + focus->height)
+    {
+        struct ClickEvent* event = addItem(&focus->events, sizeof(struct ClickEvent));
+        event->id = 1;
+        event->left = left;
+        event->unpressed = unpressed;
+    }
 }
 
 void drawMouse()

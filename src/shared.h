@@ -15,7 +15,7 @@ struct Window
     uint32_t height;
     CHAR16* title;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
-    struct Event events;
+    struct Event* events;
 };
 struct KeyEvent
 {
@@ -36,25 +36,25 @@ void* allocate(uint64_t amount);
 
 void unallocate(void* pointer, uint64_t amount);
 
-void* addItem(void* list, uint64_t size)
+void* addItem(void** list, uint64_t size)
 {
-    while (*(void**)list)
+    while (*list)
     {
-        list = *(void**)list;
+        list = *list;
     }
-    *(void**)list = allocate(size);
+    *list = allocate(size);
     **(void***)list = NULL;
-    return *(void**)list;
+    return *list;
 }
 
-void removeItem(void* list, void* item, uint64_t size)
+void removeItem(void** list, void* item, uint64_t size)
 {
-    while (*(void**)list != item)
+    while (*list != item)
     {
-        list = *(void**)list;
+        list = *list;
     }
-    unallocate(*(void**)list, size);
-    *(void**)list = **(void***)list;
+    unallocate(*list, size);
+    *list = **(void***)list;
 }
 
 BOOLEAN iterateList(void** iterator)

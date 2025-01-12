@@ -33,20 +33,20 @@ struct Button
 };
 struct Button buttons[100];
 uint8_t buttonCount = 0;
-struct Window windows;
+struct Window* windows = NULL;
 struct Window* dragging = NULL;
 struct Window* focus = NULL;
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
-    struct Window* window = addItem(&windows, sizeof(struct Window));
+    struct Window* window = addItem((void**)&windows, sizeof(struct Window));
     window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 10) / 2;
     window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 47) / 2;
     window->width = width;
     window->height = height;
     window->title = title;
     window->buffer = allocate(width * height * 4);
-    window->events.next = NULL;
+    window->events = NULL;
     focus = window;
     return window;
 }
@@ -58,7 +58,7 @@ void unallocateWindow(struct Window* window)
         focus = NULL;
     }
     unallocate(window->buffer, window->width * window->height * 4);
-    removeItem(&windows, window, sizeof(struct Window));
+    removeItem((void**)&windows, window, sizeof(struct Window));
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3)
@@ -87,7 +87,7 @@ void keyPress(uint8_t scancode, BOOLEAN unpressed)
 {
     if (focus)
     {
-        struct KeyEvent* event = addItem(&focus->events, sizeof(struct KeyEvent));
+        struct KeyEvent* event = addItem((void**)&focus->events, sizeof(struct KeyEvent));
         event->id = 0;
         event->scancode = scancode;
         event->unpressed = unpressed;
@@ -158,7 +158,7 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
                     programs[buttons[i].id].running = !programs[buttons[i].id].running;
                 }
             }
-            struct Window* window = &windows;
+            struct Window* window = (struct Window*)&windows;
             while (iterateList((void**)&window))
             {
                 if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 42)
@@ -176,7 +176,7 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
     }
     if (focus && mouseX >= focus->x + 5 && mouseX < focus->x + focus->width + 5 && mouseY >= focus->y + 42 && mouseY < focus->y + 42 + focus->height)
     {
-        struct ClickEvent* event = addItem(&focus->events, sizeof(struct ClickEvent));
+        struct ClickEvent* event = addItem((void**)&focus->events, sizeof(struct ClickEvent));
         event->id = 1;
         event->left = left;
         event->unpressed = unpressed;
@@ -222,7 +222,7 @@ void start()
         {
             drawRectangle(focus->x, focus->y, focus->width + 10, focus->height + 47, white);
         }
-        struct Window* window = &windows;
+        struct Window* window = (struct Window*)&windows;
         while (iterateList((void**)&window))
         {
             if (window != focus)

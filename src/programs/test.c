@@ -15,7 +15,7 @@ void _start()
 
 void update()
 {
-    struct Event* event = &window->events;
+    struct Event* event = (struct Event*)&window->events;
     struct Event* lastEvent = event;
     while (iterateList((void**)&event))
     {
@@ -26,7 +26,7 @@ void update()
                 {
                     shift = !shift;
                 }
-                removeItem(&window->events, event, sizeof(struct KeyEvent));
+                removeItem((void**)&window->events, event, sizeof(struct KeyEvent));
                 event = lastEvent;
                 break;
             case 1:
@@ -34,7 +34,7 @@ void update()
                 {
                     shift = !shift;
                 }
-                removeItem(&window->events, event, sizeof(struct ClickEvent));
+                removeItem((void**)&window->events, event, sizeof(struct ClickEvent));
                 event = lastEvent;
                 break;
         }

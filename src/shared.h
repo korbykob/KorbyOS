@@ -5,6 +5,7 @@ struct Event
 {
     struct Event* next;
     uint8_t id;
+    uint8_t size;
 };
 struct Window
 {
@@ -21,6 +22,7 @@ struct KeyEvent
 {
     struct Event* next;
     uint8_t id;
+    uint8_t size;
     uint8_t scancode;
     BOOLEAN unpressed;
 };
@@ -28,6 +30,7 @@ struct ClickEvent
 {
     struct Event* next;
     uint8_t id;
+    uint8_t size;
     BOOLEAN left;
     BOOLEAN unpressed;
 };

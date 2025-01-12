@@ -89,6 +89,7 @@ void keyPress(uint8_t scancode, BOOLEAN unpressed)
     {
         struct KeyEvent* event = addItem((void**)&focus->events, sizeof(struct KeyEvent));
         event->id = 0;
+        event->size = sizeof(struct KeyEvent);
         event->scancode = scancode;
         event->unpressed = unpressed;
     }
@@ -178,6 +179,7 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
     {
         struct ClickEvent* event = addItem((void**)&focus->events, sizeof(struct ClickEvent));
         event->id = 1;
+        event->size = sizeof(struct ClickEvent);
         event->left = left;
         event->unpressed = unpressed;
     }

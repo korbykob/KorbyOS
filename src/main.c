@@ -23,16 +23,6 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
 int64_t mouseX = 0;
 int64_t mouseY = 0;
-struct Button
-{
-    uint32_t x;
-    uint32_t y;
-    uint32_t width;
-    uint32_t height;
-    uint64_t id;
-};
-struct Button buttons[100];
-uint8_t buttonCount = 0;
 struct Window* windows = NULL;
 struct Window* dragging = NULL;
 struct Window* focus = NULL;
@@ -144,19 +134,20 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
     {
         if (!unpressed)
         {
-            for (uint8_t i = 0; i < buttonCount; i++)
+            for (uint8_t i = 0; i < 1; i++)
             {
-                if (mouseX >= buttons[i].x && mouseX < buttons[i].x + buttons[i].width && mouseY >= buttons[i].y && mouseY < buttons[i].y + buttons[i].height)
+                uint64_t x = 4 + i * 24 + i * 8;
+                if (mouseX >= x && mouseX < x + 24 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
                 {
-                    if (programs[buttons[i].id].running)
+                    if (programs[i].running)
                     {
-                        programs[buttons[i].id].stop();
+                        programs[i].stop();
                     }
                     else
                     {
-                        programs[buttons[i].id].start();
+                        programs[i].start();
                     }
-                    programs[buttons[i].id].running = !programs[buttons[i].id].running;
+                    programs[i].running = !programs[i].running;
                 }
             }
             struct Window* window = (struct Window*)&windows;
@@ -239,32 +230,16 @@ void start()
             drawImage(window->x + 5, window->y + 42, window->width, window->height, window->buffer);
         }
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-        struct Button mainButton;
-        mainButton.x = 4;
-        mainButton.y = GOP->Mode->Info->VerticalResolution - 28;
-        mainButton.width = 24;
-        mainButton.height = 24;
-        mainButton.id = 0;
-        drawRectangle(mainButton.x, mainButton.y, mainButton.width, mainButton.height, white);
-        uint8_t buttonCountBuffer = 0;
         for (uint8_t i = 0; i < 1; i++)
         {
-            struct Button button;
-            button.x = 4 + i * 24 + i * 8;
-            button.y = GOP->Mode->Info->VerticalResolution - 28;
-            button.width = 24;
-            button.height = 24;
-            button.id = i;
+            uint64_t x = 4 + i * 24 + i * 8;
             if (programs[i].running)
             {
                 programs[i].update();
-                drawRectangle(button.x - 2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
+                drawRectangle(x - 2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
             }
-            drawImage(button.x, button.y, button.width, button.height, programs[i].icon);
-            buttons[buttonCountBuffer] = button;
-            buttonCountBuffer++;
+            drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
         }
-        buttonCount = buttonCountBuffer;
         drawMouse();
         waitForPit();
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);

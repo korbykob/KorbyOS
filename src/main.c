@@ -38,6 +38,23 @@ struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
     window->title = title;
     window->buffer = allocate(width * height * 4);
     window->hideMouse = FALSE;
+    window->fullscreen = FALSE;
+    window->events = NULL;
+    focus = window;
+    return window;
+}
+
+struct Window* allocateFullscreenWindow()
+{
+    struct Window* window = addItem((void**)&windows, sizeof(struct Window));
+    window->x = 0;
+    window->y = 0;
+    window->width = GOP->Mode->Info->HorizontalResolution;
+    window->height = GOP->Mode->Info->VerticalResolution;
+    window->title = NULL;
+    window->buffer = allocate(window->width * window->height * 4);
+    window->hideMouse = FALSE;
+    window->fullscreen = TRUE;
     window->events = NULL;
     focus = window;
     return window;
@@ -68,6 +85,9 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return (uint64_t)allocateWindow(arg1, arg2, (CHAR16*)arg3);
             break;
         case 3:
+            return (uint64_t)allocateFullscreenWindow();
+            break;
+        case 4:
             unallocateWindow((struct Window*)arg1);
             return 0;
             break;
@@ -77,6 +97,10 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
 
 void keyPress(uint8_t scancode, BOOLEAN unpressed)
 {
+    if (!unpressed && scancode == 91)
+    {
+        focus = NULL;
+    }
     if (focus)
     {
         struct KeyEvent* event = addItem((void**)&focus->events, sizeof(struct KeyEvent));
@@ -161,20 +185,22 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
                     focus = window;
                     break;
                 }
+                if (mouseX >= window->x + 10 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 47 && mouseY < window->y + 47 + window->height)
+                {
+                    focus = window;
+                    struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
+                    event->id = 1;
+                    event->size = sizeof(struct ClickEvent);
+                    event->left = left;
+                    event->unpressed = unpressed;
+                    break;
+                }
             }
         }
         else
         {
             dragging = NULL;
         }
-    }
-    if (focus && mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
-    {
-        struct ClickEvent* event = addItem((void**)&focus->events, sizeof(struct ClickEvent));
-        event->id = 1;
-        event->size = sizeof(struct ClickEvent);
-        event->left = left;
-        event->unpressed = unpressed;
     }
 }
 
@@ -195,20 +221,30 @@ void start()
         struct Window* window = (struct Window*)&windows;
         while (iterateList((void**)&window))
         {
-            drawRectangle(focus->x, focus->y, focus->width + 20, focus->height + 57, focus == window ? white : black);
-            drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
-            drawString(window->title, window->x + 10, window->y + 10, black);
-            drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
-        }
-        drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-        for (uint8_t i = 0; i < 1; i++)
-        {
-            uint64_t x = 4 + i * 24 + i * 8;
-            if (programs[i].running)
+            if (window->fullscreen)
             {
-                drawRectangle(x - 2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
+                blit(window->buffer, videoBuffer);
             }
-            drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
+            else
+            {
+                drawRectangle(window->x, window->y, window->width + 20, window->height + 57, focus == window ? white : black);
+                drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
+                drawString(window->title, window->x + 10, window->y + 10, black);
+                drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
+            }
+        }
+        if (!focus || !focus->fullscreen)
+        {
+            drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
+            for (uint8_t i = 0; i < 1; i++)
+            {
+                uint64_t x = 4 + i * 24 + i * 8;
+                if (programs[i].running)
+                {
+                    drawRectangle(x - 2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
+                }
+                drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
+            }
         }
         if (drawMouse)
         {

@@ -17,6 +17,7 @@ struct Window
     CHAR16* title;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
     BOOLEAN hideMouse;
+    BOOLEAN fullscreen;
     struct Event* events;
 };
 struct KeyEvent

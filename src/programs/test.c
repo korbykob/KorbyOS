@@ -1,16 +1,24 @@
 #include "../program.h"
 
 struct Window* window;
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour;
-BOOLEAN shift;
+uint64_t x;
+uint64_t y;
+BOOLEAN pressed;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
 
 void _start()
 {
     window = allocateWindow(640, 360, L"Window test");
-    colour.Red = 0;
-    colour.Green = 0;
-    colour.Blue = 0;
-    shift = TRUE;
+    window->hideMouse = TRUE;
+    x = 0;
+    y = 0;
+    pressed = FALSE;
+    buffer = allocate(window->width * window->height * 4);
+    uint64_t* destination = (uint64_t*)buffer;
+    for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
+    {
+        *destination++ = 0;
+    }
 }
 
 void update()
@@ -21,65 +29,48 @@ void update()
     {
         switch (event->id)
         {
-            case 0:
-                if (!((struct KeyEvent*)event)->unpressed)
-                {
-                    shift = !shift;
-                }
-                break;
             case 1:
-                if (!((struct ClickEvent*)event)->unpressed)
+                if (((struct ClickEvent*)event)->left == TRUE)
                 {
-                    shift = !shift;
+                    pressed = !((struct ClickEvent*)event)->unpressed;
                 }
                 break;
             case 2:
-                if (((struct MouseEvent*)event)->x > window->width / 2 && ((struct MouseEvent*)event)->y > window->height / 2)
+                if (pressed)
                 {
-                    shift = !shift;
+                    while (x != ((struct MouseEvent*)event)->x || y != ((struct MouseEvent*)event)->y)
+                    {
+                        int64_t differenceX = ((struct MouseEvent*)event)->x - x;
+                        int64_t differenceY = ((struct MouseEvent*)event)->y - y;
+                        if (differenceX != 0)
+                        {
+                            x += differenceX > 0 ? 1 : -1;
+                        }
+                        if (differenceY != 0)
+                        {
+                            y += differenceY > 0 ? 1 : -1;
+                        }
+                        ((uint32_t*)buffer)[y * window->width + x] = 0xFFFFFFFF;
+                    }
                 }
+                x = ((struct MouseEvent*)event)->x;
+                y = ((struct MouseEvent*)event)->y;
                 break;
         }
         removeItem((void**)&window->events, event, event->size);
         event = lastEvent;
     }
-    if (shift)
+    uint64_t* to = (uint64_t*)window->buffer;
+    uint64_t* from = (uint64_t*)buffer;
+    for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
     {
-        for (uint32_t y = 0; y < window->height; y++)
-        {
-            for (uint32_t x = 0; x < window->width; x++)
-            {
-                window->buffer[y * window->width + x] = colour;
-            }
-        }
-        if (colour.Red != 0xFF && colour.Green == 0x00)
-        {
-            colour.Red += 17;
-        }
-        else if (colour.Blue != 0x00 && colour.Green == 0x00)
-        {
-            colour.Blue -= 17;
-        }
-        else if (colour.Green != 0xFF && colour.Blue != 0xFF)
-        {
-            colour.Green += 17;
-        }
-        else if (colour.Red != 0x00)
-        {
-            colour.Red -= 17;
-        }
-        else if (colour.Blue != 0xFF)
-        {
-            colour.Blue += 17;
-        }
-        else if (colour.Green != 0x00)
-        {
-            colour.Green -= 17;
-        }
+        *to++ = *from++;
     }
+    ((uint32_t*)window->buffer)[y * window->width + x] = 0xFFFFFFFF;
 }
 
 void stop()
 {
     unallocateWindow(window);
+    unallocate(buffer, window->width * window->height * 4);
 }

@@ -26,6 +26,7 @@ int64_t mouseY = 0;
 struct Window* windows = NULL;
 struct Window* dragging = NULL;
 struct Window* focus = NULL;
+BOOLEAN drawMouse = TRUE;
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
@@ -36,6 +37,7 @@ struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
     window->height = height;
     window->title = title;
     window->buffer = allocate(width * height * 4);
+    window->hideMouse = FALSE;
     window->events = NULL;
     focus = window;
     return window;
@@ -133,6 +135,11 @@ void mouseMove(int8_t x, int8_t y)
         event->size = sizeof(struct MouseEvent);
         event->x = mouseX - (focus->x + 10);
         event->y = mouseY - (focus->y + 47);
+        drawMouse = !focus->hideMouse;
+    }
+    else
+    {
+        drawMouse = TRUE;
     }
 }
 
@@ -191,6 +198,13 @@ void start()
     while (TRUE)
     {
         blit(wallpaper, videoBuffer);
+        for (uint8_t i = 0; i < 1; i++)
+        {
+            if (programs[i].running)
+            {
+                programs[i].update();
+            }
+        }
         struct Window* window = (struct Window*)&windows;
         while (iterateList((void**)&window))
         {
@@ -205,25 +219,27 @@ void start()
             uint64_t x = 4 + i * 24 + i * 8;
             if (programs[i].running)
             {
-                programs[i].update();
                 drawRectangle(x - 2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
             }
             drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
         }
-        EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
-        uint8_t* buffer = mouseIcon;
-        for (uint32_t y = 0; y < 16; y++)
+        if (drawMouse)
         {
-            for (uint32_t x = 0; x < 16; x++)
+            EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
+            uint8_t* buffer = mouseIcon;
+            for (uint32_t y = 0; y < 16; y++)
             {
-                if (*buffer != 2)
+                for (uint32_t x = 0; x < 16; x++)
                 {
-                    *address = *buffer == 0 ? black : white;
+                    if (*buffer != 2)
+                    {
+                        *address = *buffer ? white : black;
+                    }
+                    buffer++;
+                    address++;
                 }
-                buffer++;
-                address++;
+                address += GOP->Mode->Info->HorizontalResolution - 16;
             }
-            address += GOP->Mode->Info->HorizontalResolution - 16;
         }
         waitForPit();
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);

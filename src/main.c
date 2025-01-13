@@ -31,8 +31,8 @@ BOOLEAN drawMouse = TRUE;
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
     struct Window* window = addItem((void**)&windows, sizeof(struct Window));
-    window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 10) / 2;
-    window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 47) / 2;
+    window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 20) / 2;
+    window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 57) / 2;
     window->width = width;
     window->height = height;
     window->title = title;
@@ -127,19 +127,6 @@ void mouseMove(int8_t x, int8_t y)
         {
             dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 89;
         }
-    }
-    if (focus && mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
-    {
-        struct MouseEvent* event = addItem((void**)&focus->events, sizeof(struct MouseEvent));
-        event->id = 2;
-        event->size = sizeof(struct MouseEvent);
-        event->x = mouseX - (focus->x + 10);
-        event->y = mouseY - (focus->y + 47);
-        drawMouse = !focus->hideMouse;
-    }
-    else
-    {
-        drawMouse = TRUE;
     }
 }
 

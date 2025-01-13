@@ -384,7 +384,10 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
     if (mouseCycle == 3)
     {
         mouseCycle = 0;
-        mouseMove(mouseBytes[1], mouseBytes[2]);
+        if (mouseBytes[1] != 0 || mouseBytes[2] != 0)
+        {
+            mouseMove(mouseBytes[1], mouseBytes[2]);
+        }
         BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
         if (leftClick != lastLeftClick)
         {

@@ -184,34 +184,6 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
     }
 }
 
-void drawMouse()
-{
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
-    uint8_t* buffer = mouseIcon;
-    for (uint32_t y = 0; y < 16; y++)
-    {
-        for (uint32_t x = 0; x < 16; x++)
-        {
-            EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour;
-            if (*buffer != 2)
-            {
-                if (*buffer == 0)
-                {
-                    colour = black;
-                }
-                else
-                {
-                    colour = white;
-                }
-                *address = colour;
-            }
-            buffer++;
-            address++;
-        }
-        address += GOP->Mode->Info->HorizontalResolution - 16;
-    }
-}
-
 void start()
 {
     mouseX = GOP->Mode->Info->HorizontalResolution / 2;
@@ -238,7 +210,21 @@ void start()
             }
             drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
         }
-        drawMouse();
+        EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
+        uint8_t* buffer = mouseIcon;
+        for (uint32_t y = 0; y < 16; y++)
+        {
+            for (uint32_t x = 0; x < 16; x++)
+            {
+                if (*buffer != 2)
+                {
+                    *address = *buffer == 0 ? black : white;
+                }
+                buffer++;
+                address++;
+            }
+            address += GOP->Mode->Info->HorizontalResolution - 16;
+        }
         waitForPit();
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
     }

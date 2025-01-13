@@ -34,6 +34,14 @@ struct ClickEvent
     BOOLEAN left;
     BOOLEAN unpressed;
 };
+struct MouseEvent
+{
+    struct Event* next;
+    uint8_t id;
+    uint8_t size;
+    uint64_t x;
+    uint64_t y;
+};
 
 void* allocate(uint64_t amount);
 

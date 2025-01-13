@@ -126,6 +126,14 @@ void mouseMove(int8_t x, int8_t y)
             dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 89;
         }
     }
+    if (focus && mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
+    {
+        struct MouseEvent* event = addItem((void**)&focus->events, sizeof(struct MouseEvent));
+        event->id = 2;
+        event->size = sizeof(struct MouseEvent);
+        event->x = mouseX - (focus->x + 10);
+        event->y = mouseY - (focus->y + 47);
+    }
 }
 
 void mouseClick(BOOLEAN left, BOOLEAN unpressed)

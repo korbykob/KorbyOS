@@ -6,7 +6,7 @@ BOOLEAN shift;
 
 void _start()
 {
-    window = allocateWindow(640, 360, L"Cyberpunk 2077 (REAL11!!1)");
+    window = allocateWindow(640, 360, L"Window test");
     colour.Red = 0;
     colour.Green = 0;
     colour.Blue = 0;
@@ -29,6 +29,12 @@ void update()
                 break;
             case 1:
                 if (!((struct ClickEvent*)event)->unpressed)
+                {
+                    shift = !shift;
+                }
+                break;
+            case 2:
+                if (((struct MouseEvent*)event)->x > window->width / 2 && ((struct MouseEvent*)event)->y > window->height / 2)
                 {
                     shift = !shift;
                 }

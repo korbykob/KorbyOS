@@ -112,18 +112,18 @@ void mouseMove(int8_t x, int8_t y)
         {
             dragging->x = 0;
         }
-        if (dragging->x > GOP->Mode->Info->HorizontalResolution - dragging->width - 10)
+        if (dragging->x > GOP->Mode->Info->HorizontalResolution - dragging->width - 20)
         {
-            dragging->x = GOP->Mode->Info->HorizontalResolution - dragging->width - 10;
+            dragging->x = GOP->Mode->Info->HorizontalResolution - dragging->width - 20;
         }
         dragging->y -= y;
         if (dragging->y < 0)
         {
             dragging->y = 0;
         }
-        if (dragging->y > GOP->Mode->Info->VerticalResolution - dragging->height - 79)
+        if (dragging->y > GOP->Mode->Info->VerticalResolution - dragging->height - 89)
         {
-            dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 79;
+            dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 89;
         }
     }
 }
@@ -153,7 +153,7 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
             struct Window* window = (struct Window*)&windows;
             while (iterateList((void**)&window))
             {
-                if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 42)
+                if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 47)
                 {
                     dragging = window;
                     focus = window;
@@ -166,7 +166,7 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
             dragging = NULL;
         }
     }
-    if (focus && mouseX >= focus->x + 5 && mouseX < focus->x + focus->width + 5 && mouseY >= focus->y + 42 && mouseY < focus->y + 42 + focus->height)
+    if (focus && mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
     {
         struct ClickEvent* event = addItem((void**)&focus->events, sizeof(struct ClickEvent));
         event->id = 1;
@@ -211,23 +211,13 @@ void start()
     while (TRUE)
     {
         blit(wallpaper, videoBuffer);
-        if (focus)
-        {
-            drawRectangle(focus->x, focus->y, focus->width + 10, focus->height + 47, white);
-        }
         struct Window* window = (struct Window*)&windows;
         while (iterateList((void**)&window))
         {
-            if (window != focus)
-            {
-                drawRectangle(window->x, window->y, window->width + 10, window->height + 47, grey);
-            }
-            else
-            {
-                drawRectangle(window->x + 5, window->y + 5, window->width, window->height + 37, grey);
-            }
-            drawString(window->title, window->x + 5, window->y + 5, black);
-            drawImage(window->x + 5, window->y + 42, window->width, window->height, window->buffer);
+            drawRectangle(focus->x, focus->y, focus->width + 20, focus->height + 57, focus == window ? white : black);
+            drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
+            drawString(window->title, window->x + 10, window->y + 10, black);
+            drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
         }
         drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
         for (uint8_t i = 0; i < 1; i++)

@@ -160,40 +160,62 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
     {
         if (!unpressed)
         {
-            for (uint8_t i = 0; i < 1; i++)
-            {
-                uint64_t x = 4 + i * 24 + i * 8;
-                if (mouseX >= x && mouseX < x + 24 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
-                {
-                    if (programs[i].running)
-                    {
-                        programs[i].stop();
-                    }
-                    else
-                    {
-                        programs[i].start();
-                    }
-                    programs[i].running = !programs[i].running;
-                }
-            }
             struct Window* window = (struct Window*)&windows;
             while (iterateList((void**)&window))
             {
-                if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 47)
+                if (window->fullscreen)
                 {
-                    dragging = window;
-                    focus = window;
-                    break;
+                    if (focus || (!focus && mouseY < GOP->Mode->Info->VerticalResolution - 32))
+                    {
+                        if (focus)
+                        {
+                            struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
+                            event->id = 1;
+                            event->size = sizeof(struct ClickEvent);
+                            event->left = left;
+                            event->unpressed = unpressed;
+                        }
+                        focus = window;
+                        break;
+                    }
                 }
-                if (mouseX >= window->x + 10 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 47 && mouseY < window->y + 47 + window->height)
+                else
                 {
-                    focus = window;
-                    struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
-                    event->id = 1;
-                    event->size = sizeof(struct ClickEvent);
-                    event->left = left;
-                    event->unpressed = unpressed;
-                    break;
+                    if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 47)
+                    {
+                        dragging = window;
+                        focus = window;
+                        break;
+                    }
+                    if (mouseX >= window->x + 10 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 47 && mouseY < window->y + 47 + window->height)
+                    {
+                        focus = window;
+                        struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
+                        event->id = 1;
+                        event->size = sizeof(struct ClickEvent);
+                        event->left = left;
+                        event->unpressed = unpressed;
+                        break;
+                    }
+                }
+            }
+            if (!focus || !focus->fullscreen)
+            {
+                for (uint8_t i = 0; i < 1; i++)
+                {
+                    uint64_t x = 4 + i * 24 + i * 8;
+                    if (mouseX >= x && mouseX < x + 24 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+                    {
+                        if (programs[i].running)
+                        {
+                            programs[i].stop();
+                        }
+                        else
+                        {
+                            programs[i].start();
+                        }
+                        programs[i].running = !programs[i].running;
+                    }
                 }
             }
         }

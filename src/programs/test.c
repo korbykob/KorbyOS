@@ -1,16 +1,23 @@
 #include "../program.h"
 
 struct Window* window;
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour;
-BOOLEAN shift;
+BOOLEAN w;
+BOOLEAN a;
+BOOLEAN s;
+BOOLEAN d;
+int64_t x;
+int64_t y;
 
 void _start()
 {
-    window = allocateWindow(640, 360, L"Window test");
-    colour.Red = 0;
-    colour.Green = 0;
-    colour.Blue = 0;
-    shift = TRUE;
+    window = allocateFullscreenWindow();
+    window->hideMouse = TRUE;
+    w = FALSE;
+    a = FALSE;
+    s = FALSE;
+    d = FALSE;
+    x = window->width / 2 - 16;
+    y = window->height / 2 - 16;
 }
 
 void update()
@@ -22,54 +29,72 @@ void update()
         switch (event->id)
         {
             case 0:
-                if (!((struct KeyEvent*)event)->unpressed)
+                switch (((struct KeyEvent*)event)->scancode)
                 {
-                    shift = !shift;
-                }
-                break;
-            case 1:
-                if (!((struct ClickEvent*)event)->unpressed)
-                {
-                    shift = !shift;
+                    case 17:
+                        w = ((struct KeyEvent*)event)->pressed;
+                        break;
+                    case 30:
+                        a = ((struct KeyEvent*)event)->pressed;
+                        break;
+                    case 31:
+                        s = ((struct KeyEvent*)event)->pressed;
+                        break;
+                    case 32:
+                        d = ((struct KeyEvent*)event)->pressed;
+                        break;
                 }
                 break;
         }
         removeItem((void**)&window->events, event, event->size);
         event = lastEvent;
     }
-    if (shift)
+    if (w)
     {
-        for (uint32_t y = 0; y < window->height; y++)
+        y -= 5;
+        if (y < 0)
         {
-            for (uint32_t x = 0; x < window->width; x++)
-            {
-                window->buffer[y * window->width + x] = colour;
-            }
+            y = 0;
         }
-        if (colour.Red != 0xFF && colour.Green == 0x00)
+    }
+    if (a)
+    {
+        x -= 5;
+        if (x < 0)
         {
-            colour.Red += 17;
+            x = 0;
         }
-        else if (colour.Blue != 0x00 && colour.Green == 0x00)
+    }
+    if (s)
+    {
+        y += 5;
+        if (y > window->height - 32)
         {
-            colour.Blue -= 17;
+            y = window->height - 32;
         }
-        else if (colour.Green != 0xFF && colour.Blue != 0xFF)
+    }
+    if (d)
+    {
+        x += 5;
+        if (x > window->width - 32)
         {
-            colour.Green += 17;
+            x = window->width - 32;
         }
-        else if (colour.Red != 0x00)
+    }
+    uint64_t* clear = (uint64_t*)window->buffer;
+    for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
+    {
+        *clear++ = 0;
+    }
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = window->buffer + y * window->width + x;
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
+    for (uint32_t y = 0; y < 32; y++)
+    {
+        for (uint32_t x = 0; x < 32; x++)
         {
-            colour.Red -= 17;
+            *address++ = white;
         }
-        else if (colour.Blue != 0xFF)
-        {
-            colour.Blue += 17;
-        }
-        else if (colour.Green != 0x00)
-        {
-            colour.Green -= 17;
-        }
+        address += window->width - 32;
     }
 }
 

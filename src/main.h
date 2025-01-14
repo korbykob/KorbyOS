@@ -369,13 +369,13 @@ __attribute__((interrupt)) void keyboard(struct InterruptFrame* frame)
     {
         scancode = scancode & 0b01111111;
     }
-    keyPress(scancode, unpressed);
+    keyPress(scancode, !unpressed);
     outb(0x20, 0x20);
 }
 
 void mouseMove(int8_t x, int8_t y);
 
-void mouseClick(BOOLEAN left, BOOLEAN unpressed);
+void mouseClick(BOOLEAN left, BOOLEAN pressed);
 
 __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
 {
@@ -391,13 +391,13 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
         BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
         if (leftClick != lastLeftClick)
         {
-            mouseClick(TRUE, lastLeftClick);
+            mouseClick(TRUE, !lastLeftClick);
             lastLeftClick = leftClick;
         }
         BOOLEAN rightClick = mouseBytes[0] & 0b00000010;
         if (rightClick != lastRightClick)
         {
-            mouseClick(FALSE, lastRightClick);
+            mouseClick(FALSE, !lastRightClick);
             lastRightClick = rightClick;
         }
     }

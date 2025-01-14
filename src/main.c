@@ -26,7 +26,6 @@ int64_t mouseY = 0;
 struct Window* windows = NULL;
 struct Window* dragging = NULL;
 struct Window* focus = NULL;
-BOOLEAN drawMouse = TRUE;
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
@@ -95,9 +94,9 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
     return 0;
 }
 
-void keyPress(uint8_t scancode, BOOLEAN unpressed)
+void keyPress(uint8_t scancode, BOOLEAN pressed)
 {
-    if (!unpressed && scancode == 91)
+    if (pressed && scancode == 91)
     {
         focus = NULL;
     }
@@ -107,7 +106,7 @@ void keyPress(uint8_t scancode, BOOLEAN unpressed)
         event->id = 0;
         event->size = sizeof(struct KeyEvent);
         event->scancode = scancode;
-        event->unpressed = unpressed;
+        event->pressed = pressed;
     }
 }
 
@@ -154,11 +153,11 @@ void mouseMove(int8_t x, int8_t y)
     }
 }
 
-void mouseClick(BOOLEAN left, BOOLEAN unpressed)
+void mouseClick(BOOLEAN left, BOOLEAN pressed)
 {
     if (left)
     {
-        if (!unpressed)
+        if (pressed)
         {
             struct Window* window = (struct Window*)&windows;
             while (iterateList((void**)&window))
@@ -173,7 +172,7 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
                             event->id = 1;
                             event->size = sizeof(struct ClickEvent);
                             event->left = left;
-                            event->unpressed = unpressed;
+                            event->pressed = pressed;
                         }
                         focus = window;
                         break;
@@ -194,7 +193,7 @@ void mouseClick(BOOLEAN left, BOOLEAN unpressed)
                         event->id = 1;
                         event->size = sizeof(struct ClickEvent);
                         event->left = left;
-                        event->unpressed = unpressed;
+                        event->pressed = pressed;
                         break;
                     }
                 }
@@ -268,7 +267,7 @@ void start()
                 drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
             }
         }
-        if (drawMouse)
+        if (!focus || !focus->hideMouse || (!focus->fullscreen && (mouseX < focus->x + 10 || mouseX >= focus->x + focus->width + 10 || mouseY < focus->y + 47 || mouseY >= focus->y + 47 + focus->height)))
         {
             EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
             uint8_t* buffer = mouseIcon;

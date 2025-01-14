@@ -231,7 +231,10 @@ void start()
     mouseY = GOP->Mode->Info->VerticalResolution / 2;
     while (TRUE)
     {
-        blit(wallpaper, videoBuffer);
+        if (!focus || !focus->fullscreen)
+        {
+            blit(wallpaper, videoBuffer);
+        }
         for (uint8_t i = 0; i < 1; i++)
         {
             if (programs[i].running)

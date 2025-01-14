@@ -10,7 +10,7 @@ int64_t y;
 
 void _start()
 {
-    window = allocateFullscreenWindow();
+    window = allocateWindow(640, 360, L"Game");
     window->hideMouse = TRUE;
     w = FALSE;
     a = FALSE;

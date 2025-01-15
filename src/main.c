@@ -297,6 +297,7 @@ void start()
                 drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
                 drawString(window->title, window->x + 10, window->y + 10, black);
                 drawRectangle(window->x + window->width - 22, window->y + 10, 32, 32, red);
+                drawCharacter(L'X', window->x + window->width - 14, window->y + 10, black);
                 drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
             }
         }

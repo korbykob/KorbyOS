@@ -137,7 +137,7 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
     }
 }
 
-void mouseMove(int8_t x, int8_t y)
+void mouseMove(int16_t x, int16_t y)
 {
     mouseX += x;
     if (mouseX < 0)

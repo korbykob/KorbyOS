@@ -19,7 +19,6 @@ void _start(uint64_t id)
     {
         *clear++ = 0;
     }
-    window->hideMouse = TRUE;
     x = window->width / 2 - 16;
     y = window->height / 2 - 16;
 }

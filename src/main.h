@@ -36,7 +36,7 @@ struct InterruptFrame
 BOOLEAN waitPit = FALSE;
 BOOLEAN waitKey = FALSE;
 uint8_t mouseCycle = 2;
-int8_t mouseBytes[3];
+uint8_t mouseBytes[3];
 BOOLEAN lastLeftClick = FALSE;
 BOOLEAN lastRightClick = FALSE;
 
@@ -369,7 +369,7 @@ __attribute__((interrupt)) void keyboard(struct InterruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-void mouseMove(int8_t x, int8_t y);
+void mouseMove(int16_t x, int16_t y);
 
 void mouseClick(BOOLEAN left, BOOLEAN pressed);
 
@@ -380,9 +380,11 @@ __attribute__((interrupt)) void mouse(struct InterruptFrame* frame)
     if (mouseCycle == 3)
     {
         mouseCycle = 0;
-        if (mouseBytes[1] != 0 || mouseBytes[2] != 0)
+        int16_t x = mouseBytes[1] - ((mouseBytes[0] << 4) & 0x100);
+        int16_t y = mouseBytes[2] - ((mouseBytes[0] << 3) & 0x100);
+        if (x != 0 || y != 0)
         {
-            mouseMove(mouseBytes[1], mouseBytes[2]);
+            mouseMove(x, y);
         }
         BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
         if (leftClick != lastLeftClick)
@@ -425,14 +427,6 @@ void completed()
     outb(0x40, (divisor >> 8) & 0xFF);
     installInterrupt(0, pit, TRUE);
     installInterrupt(1, keyboard, TRUE);
-    outb(0x64, 0xA8);
-    outb(0x64, 0x20);
-    uint8_t status = inb(0x60) | 2;
-    outb(0x64, 0x60);
-    outb(0x60, status);
-    outb(0x64, 0xD4);
-    outb(0x60, 0xF6);
-    inb(0x60);
     outb(0x64, 0xD4);
     outb(0x60, 0xF4);
     inb(0x60);

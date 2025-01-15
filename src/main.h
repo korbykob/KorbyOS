@@ -12,10 +12,8 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24*24];
-    void (*start)();
-    void (*update)();
-    void (*stop)();
-    BOOLEAN running;
+    uint64_t size;
+    uint8_t* binary;
 } programs[1];
 struct
 {
@@ -277,11 +275,9 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     info = LibFileInfo(file);
     uint64_t testSize = info->FileSize;
     FreePool(info);
-    programs[0].start = AllocatePool(testSize);
-    programs[0].update = programs[0].start + 5;
-    programs[0].stop = programs[0].start + 10;
-    programs[0].running = FALSE;
-    uefi_call_wrapper(file->Read, 3, file, &testSize, programs[0].start);
+    programs[0].size = testSize;
+    programs[0].binary = AllocatePool(testSize);
+    uefi_call_wrapper(file->Read, 3, file, &testSize, programs[0].binary);
     uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;

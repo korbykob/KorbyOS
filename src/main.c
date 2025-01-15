@@ -21,11 +21,35 @@ uint8_t mouseIcon[] = {
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL red = { 0, 0, 255 };
 int64_t mouseX = 0;
 int64_t mouseY = 0;
+struct Program
+{
+    struct Program* next;
+    uint64_t size;
+    uint64_t id;
+    void (*start)(uint64_t id);
+    void (*update)();
+};
+struct Program* running = NULL;
 struct Window* windows = NULL;
 struct Window* dragging = NULL;
 struct Window* focus = NULL;
+
+void quit(uint64_t id)
+{
+    struct Program* program = (struct Program*)&running;
+    while (iterateList((void**)&program))
+    {
+        if (program->id == id)
+        {
+            unallocate(program->start, program->size);
+            removeItem((void**)&running, program, sizeof(struct Program));
+            break;
+        }
+    }
+}
 
 struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
@@ -74,19 +98,22 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
     switch (code)
     {
         case 0:
-            return (uint64_t)allocate(arg1);
+            quit(arg1);
             break;
         case 1:
+            return (uint64_t)allocate(arg1);
+            break;
+        case 2:
             unallocate((void*)arg1, arg2);
             return 0;
             break;
-        case 2:
+        case 3:
             return (uint64_t)allocateWindow(arg1, arg2, (CHAR16*)arg3);
             break;
-        case 3:
+        case 4:
             return (uint64_t)allocateFullscreenWindow();
             break;
-        case 4:
+        case 5:
             unallocateWindow((struct Window*)arg1);
             return 0;
             break;
@@ -103,7 +130,7 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
     if (focus)
     {
         struct KeyEvent* event = addItem((void**)&focus->events, sizeof(struct KeyEvent));
-        event->id = 0;
+        event->id = 1;
         event->size = sizeof(struct KeyEvent);
         event->scancode = scancode;
         event->pressed = pressed;
@@ -164,12 +191,12 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
             {
                 if (window->fullscreen)
                 {
-                    if (focus || (!focus && mouseY < GOP->Mode->Info->VerticalResolution - 32))
+                    if (focus || mouseY < GOP->Mode->Info->VerticalResolution - 32)
                     {
                         if (focus)
                         {
                             struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
-                            event->id = 1;
+                            event->id = 2;
                             event->size = sizeof(struct ClickEvent);
                             event->left = left;
                             event->pressed = pressed;
@@ -178,24 +205,28 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         break;
                     }
                 }
-                else
+                else if (mouseX >= window->x + window->width - 22 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 10 && mouseY < window->y + 42)
                 {
-                    if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 47)
-                    {
-                        dragging = window;
-                        focus = window;
-                        break;
-                    }
-                    if (mouseX >= window->x + 10 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 47 && mouseY < window->y + 47 + window->height)
-                    {
-                        focus = window;
-                        struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
-                        event->id = 1;
-                        event->size = sizeof(struct ClickEvent);
-                        event->left = left;
-                        event->pressed = pressed;
-                        break;
-                    }
+                    struct Event* event = addItem((void**)&window->events, sizeof(struct Event));
+                    event->id = 0;
+                    event->size = sizeof(struct Event);
+                    break;
+                }
+                else if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 47)
+                {
+                    dragging = window;
+                    focus = window;
+                    break;
+                }
+                else if (mouseX >= window->x + 10 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 47 && mouseY < window->y + 47 + window->height)
+                {
+                    focus = window;
+                    struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
+                    event->id = 2;
+                    event->size = sizeof(struct ClickEvent);
+                    event->left = left;
+                    event->pressed = pressed;
+                    break;
                 }
             }
             if (!focus || !focus->fullscreen)
@@ -205,15 +236,28 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     uint64_t x = 4 + i * 24 + i * 8;
                     if (mouseX >= x && mouseX < x + 24 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
                     {
-                        if (programs[i].running)
+                        uint64_t id = 0;
+                        struct Program* iterator = (struct Program*)&running;
+                        while (iterateList((void**)&iterator))
                         {
-                            programs[i].stop();
+                            if (id == iterator->id)
+                            {
+                                id++;
+                                iterator = (struct Program*)&running;
+                            }
                         }
-                        else
+                        struct Program* program = addItem((void**)&running, sizeof(struct Program));
+                        program->size = programs[i].size;
+                        program->id = id;
+                        program->start = allocate(programs[i].size);
+                        uint8_t* source = programs[i].binary;
+                        uint8_t* destination = (uint8_t*)program->start;
+                        for (uint64_t i2 = 0; i2 < programs[i].size; i2++)
                         {
-                            programs[i].start();
+                            *destination++ = *source++;
                         }
-                        programs[i].running = !programs[i].running;
+                        program->update = program->start + 5;
+                        program->start(id);
                     }
                 }
             }
@@ -235,12 +279,10 @@ void start()
         {
             blit(wallpaper, videoBuffer);
         }
-        for (uint8_t i = 0; i < 1; i++)
+        struct Program* program = (struct Program*)&running;
+        while (iterateList((void**)&program))
         {
-            if (programs[i].running)
-            {
-                programs[i].update();
-            }
+            program->update();
         }
         struct Window* window = (struct Window*)&windows;
         while (iterateList((void**)&window))
@@ -254,6 +296,7 @@ void start()
                 drawRectangle(window->x, window->y, window->width + 20, window->height + 57, focus == window ? white : black);
                 drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
                 drawString(window->title, window->x + 10, window->y + 10, black);
+                drawRectangle(window->x + window->width - 22, window->y + 10, 32, 32, red);
                 drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
             }
         }
@@ -263,10 +306,6 @@ void start()
             for (uint8_t i = 0; i < 1; i++)
             {
                 uint64_t x = 4 + i * 24 + i * 8;
-                if (programs[i].running)
-                {
-                    drawRectangle(x - 2, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
-                }
                 drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
             }
         }

@@ -1,21 +1,19 @@
 #include "../program.h"
 
-struct Window* window;
-BOOLEAN w;
-BOOLEAN a;
-BOOLEAN s;
-BOOLEAN d;
-int64_t x;
-int64_t y;
+uint64_t pid = 0;
+struct Window* window = NULL;
+BOOLEAN w = FALSE;
+BOOLEAN a = FALSE;
+BOOLEAN s = FALSE;
+BOOLEAN d = FALSE;
+int64_t x = 0;
+int64_t y = 0;
 
-void _start()
+void _start(uint64_t id)
 {
+    pid = id;
     window = allocateWindow(640, 360, L"Game");
     window->hideMouse = TRUE;
-    w = FALSE;
-    a = FALSE;
-    s = FALSE;
-    d = FALSE;
     x = window->width / 2 - 16;
     y = window->height / 2 - 16;
 }
@@ -29,6 +27,10 @@ void update()
         switch (event->id)
         {
             case 0:
+                unallocateWindow(window);
+                quit(pid);
+                break;
+            case 1:
                 switch (((struct KeyEvent*)event)->scancode)
                 {
                     case 17:
@@ -96,9 +98,4 @@ void update()
         }
         address += window->width - 32;
     }
-}
-
-void stop()
-{
-    unallocateWindow(window);
 }

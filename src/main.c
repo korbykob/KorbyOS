@@ -186,6 +186,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
         if (pressed)
         {
             Window* window = (Window*)&windows;
+            uint64_t i = 1;
             while (iterateList((void**)&window))
             {
                 if (window->fullscreen)
@@ -200,6 +201,15 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                             event->left = left;
                             event->pressed = pressed;
                         }
+                        focus = window;
+                        break;
+                    }
+                }
+                else if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+                {
+                    uint64_t x = 5 + i * 32;
+                    if (mouseX >= x && mouseX < x + 24)
+                    {
                         focus = window;
                         break;
                     }
@@ -227,13 +237,14 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     event->pressed = pressed;
                     break;
                 }
+                i++;
             }
-            if (!focus || !focus->fullscreen)
+            if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
             {
                 for (uint8_t i = 0; i < 1; i++)
                 {
-                    uint64_t x = 4 + i * 24 + i * 8;
-                    if (mouseX >= x && mouseX < x + 24 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+                    uint64_t x = 4 + i * 32;
+                    if (mouseX >= x && mouseX < x + 24)
                     {
                         uint64_t id = 0;
                         Program* iterator = (Program*)&running;
@@ -305,8 +316,19 @@ void start()
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
             for (uint8_t i = 0; i < 1; i++)
             {
-                uint64_t x = 4 + i * 24 + i * 8;
-                drawImage(x, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
+                drawImage(4 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
+            }
+            drawRectangle(1 * 32, GOP->Mode->Info->VerticalResolution - 28, 1, 24, black);
+            window = (Window*)&windows;
+            uint64_t i = 1;
+            while (iterateList((void**)&window))
+            {
+                if (focus == window)
+                {
+                    drawRectangle(3 + i * 32, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
+                }
+                drawRectangle(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, white);
+                i++;
             }
         }
         if (!focus || !focus->hideMouse || (!focus->fullscreen && (mouseX < focus->x + 10 || mouseX >= focus->x + focus->width + 10 || mouseY < focus->y + 47 || mouseY >= focus->y + 47 + focus->height)))

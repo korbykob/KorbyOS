@@ -1,7 +1,7 @@
 #include "../program.h"
 
 uint64_t pid = 0;
-struct Window* window = NULL;
+Window* window = NULL;
 BOOLEAN w = FALSE;
 BOOLEAN a = FALSE;
 BOOLEAN s = FALSE;
@@ -25,8 +25,8 @@ void _start(uint64_t id)
 
 void update()
 {
-    struct Event* event = (struct Event*)&window->events;
-    struct Event* lastEvent = event;
+    Event* event = (Event*)&window->events;
+    Event* lastEvent = event;
     while (iterateList((void**)&event))
     {
         switch (event->id)
@@ -36,22 +36,22 @@ void update()
                 quit(pid);
                 break;
             case 1:
-                switch (((struct KeyEvent*)event)->scancode)
+                switch (((KeyEvent*)event)->scancode)
                 {
                     case 17:
-                        w = ((struct KeyEvent*)event)->pressed;
+                        w = ((KeyEvent*)event)->pressed;
                         break;
                     case 30:
-                        a = ((struct KeyEvent*)event)->pressed;
+                        a = ((KeyEvent*)event)->pressed;
                         break;
                     case 31:
-                        s = ((struct KeyEvent*)event)->pressed;
+                        s = ((KeyEvent*)event)->pressed;
                         break;
                     case 32:
-                        d = ((struct KeyEvent*)event)->pressed;
+                        d = ((KeyEvent*)event)->pressed;
                         break;
                     case 42:
-                        shift = ((struct KeyEvent*)event)->pressed;
+                        shift = ((KeyEvent*)event)->pressed;
                         break;
                 }
                 break;

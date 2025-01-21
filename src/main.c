@@ -24,36 +24,35 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL red = { 0, 0, 255 };
 int64_t mouseX = 0;
 int64_t mouseY = 0;
-struct Program
-{
-    struct Program* next;
+typedef struct {
+    void* next;
     uint64_t size;
     uint64_t id;
     void (*start)(uint64_t id);
     void (*update)();
-};
-struct Program* running = NULL;
-struct Window* windows = NULL;
-struct Window* dragging = NULL;
-struct Window* focus = NULL;
+} Program;
+Program* running = NULL;
+Window* windows = NULL;
+Window* dragging = NULL;
+Window* focus = NULL;
 
 void quit(uint64_t id)
 {
-    struct Program* program = (struct Program*)&running;
+    Program* program = (Program*)&running;
     while (iterateList((void**)&program))
     {
         if (program->id == id)
         {
             unallocate(program->start, program->size);
-            removeItem((void**)&running, program, sizeof(struct Program));
+            removeItem((void**)&running, program, sizeof(Program));
             break;
         }
     }
 }
 
-struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
+Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
 {
-    struct Window* window = addItem((void**)&windows, sizeof(struct Window));
+    Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 20) / 2;
     window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 57) / 2;
     window->width = width;
@@ -67,9 +66,9 @@ struct Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
     return window;
 }
 
-struct Window* allocateFullscreenWindow()
+Window* allocateFullscreenWindow()
 {
-    struct Window* window = addItem((void**)&windows, sizeof(struct Window));
+    Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = 0;
     window->y = 0;
     window->width = GOP->Mode->Info->HorizontalResolution;
@@ -83,14 +82,14 @@ struct Window* allocateFullscreenWindow()
     return window;
 }
 
-void unallocateWindow(struct Window* window)
+void unallocateWindow(Window* window)
 {
     if (focus == window)
     {
         focus = NULL;
     }
     unallocate(window->buffer, window->width * window->height * 4);
-    removeItem((void**)&windows, window, sizeof(struct Window));
+    removeItem((void**)&windows, window, sizeof(Window));
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3)
@@ -114,7 +113,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return (uint64_t)allocateFullscreenWindow();
             break;
         case 5:
-            unallocateWindow((struct Window*)arg1);
+            unallocateWindow((Window*)arg1);
             return 0;
             break;
     }
@@ -129,9 +128,9 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
     }
     if (focus)
     {
-        struct KeyEvent* event = addItem((void**)&focus->events, sizeof(struct KeyEvent));
+        KeyEvent* event = addItem((void**)&focus->events, sizeof(KeyEvent));
         event->id = 1;
-        event->size = sizeof(struct KeyEvent);
+        event->size = sizeof(KeyEvent);
         event->scancode = scancode;
         event->pressed = pressed;
     }
@@ -186,7 +185,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
     {
         if (pressed)
         {
-            struct Window* window = (struct Window*)&windows;
+            Window* window = (Window*)&windows;
             while (iterateList((void**)&window))
             {
                 if (window->fullscreen)
@@ -195,9 +194,9 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     {
                         if (focus)
                         {
-                            struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
+                            ClickEvent* event = addItem((void**)&window->events, sizeof(ClickEvent));
                             event->id = 2;
-                            event->size = sizeof(struct ClickEvent);
+                            event->size = sizeof(ClickEvent);
                             event->left = left;
                             event->pressed = pressed;
                         }
@@ -207,9 +206,9 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                 }
                 else if (mouseX >= window->x + window->width - 22 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 10 && mouseY < window->y + 42)
                 {
-                    struct Event* event = addItem((void**)&window->events, sizeof(struct Event));
+                    Event* event = addItem((void**)&window->events, sizeof(Event));
                     event->id = 0;
-                    event->size = sizeof(struct Event);
+                    event->size = sizeof(Event);
                     break;
                 }
                 else if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 47)
@@ -221,9 +220,9 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                 else if (mouseX >= window->x + 10 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 47 && mouseY < window->y + 47 + window->height)
                 {
                     focus = window;
-                    struct ClickEvent* event = addItem((void**)&window->events, sizeof(struct ClickEvent));
+                    ClickEvent* event = addItem((void**)&window->events, sizeof(ClickEvent));
                     event->id = 2;
-                    event->size = sizeof(struct ClickEvent);
+                    event->size = sizeof(ClickEvent);
                     event->left = left;
                     event->pressed = pressed;
                     break;
@@ -237,16 +236,16 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     if (mouseX >= x && mouseX < x + 24 && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
                     {
                         uint64_t id = 0;
-                        struct Program* iterator = (struct Program*)&running;
+                        Program* iterator = (Program*)&running;
                         while (iterateList((void**)&iterator))
                         {
                             if (id == iterator->id)
                             {
                                 id++;
-                                iterator = (struct Program*)&running;
+                                iterator = (Program*)&running;
                             }
                         }
-                        struct Program* program = addItem((void**)&running, sizeof(struct Program));
+                        Program* program = addItem((void**)&running, sizeof(Program));
                         program->size = programs[i].size;
                         program->id = id;
                         program->start = allocate(programs[i].size);
@@ -279,12 +278,12 @@ void start()
         {
             blit(wallpaper, videoBuffer);
         }
-        struct Program* program = (struct Program*)&running;
+        Program* program = (Program*)&running;
         while (iterateList((void**)&program))
         {
             program->update();
         }
-        struct Window* window = (struct Window*)&windows;
+        Window* window = (Window*)&windows;
         while (iterateList((void**)&window))
         {
             if (window->fullscreen)

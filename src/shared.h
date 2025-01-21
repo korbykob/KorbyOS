@@ -1,15 +1,15 @@
 #include <efi.h>
 #include <efilib.h>
 
-struct Event
+typedef struct
 {
-    struct Event* next;
+    void* next;
     uint8_t id;
     uint8_t size;
-};
-struct Window
+} Event;
+typedef struct
 {
-    struct Window* next;
+    void* next;
     int64_t x;
     int64_t y;
     uint32_t width;
@@ -18,24 +18,24 @@ struct Window
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
     BOOLEAN hideMouse;
     BOOLEAN fullscreen;
-    struct Event* events;
-};
-struct KeyEvent
+    Event* events;
+} Window;
+typedef struct
 {
-    struct Event* next;
+    void* next;
     uint8_t id;
     uint8_t size;
     uint8_t scancode;
     BOOLEAN pressed;
-};
-struct ClickEvent
+} KeyEvent;
+typedef struct
 {
-    struct Event* next;
+    void* next;
     uint8_t id;
     uint8_t size;
     BOOLEAN left;
     BOOLEAN pressed;
-};
+} ClickEvent;
 
 void* allocate(uint64_t amount);
 

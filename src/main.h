@@ -170,28 +170,31 @@ void fillScreen(EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
 
 void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
 {
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x;
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL colours[2];
+    colours[0] = color;
+    colours[1] = color;
+    uint64_t* address = (uint64_t*)(videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x);
     for (uint32_t y = 0; y < height; y++)
     {
-        for (uint32_t x = 0; x < width; x++)
+        for (uint32_t x = 0; x < width / 2; x++)
         {
-            *address++ = color;
+            *address++ = *(uint64_t*)colours;
         }
-        address += GOP->Mode->Info->HorizontalResolution - width;
+        address += (GOP->Mode->Info->HorizontalResolution - width) / 2;
     }
 }
 
 void drawImage(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer)
 {
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* from = buffer;
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* to = videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x;
+    uint64_t* from = (uint64_t*)buffer;
+    uint64_t* to = (uint64_t*)(videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x);
     for (uint32_t y = 0; y < height; y++)
     {
-        for (uint32_t x = 0; x < width; x++)
+        for (uint32_t x = 0; x < width / 2; x++)
         {
             *to++ = *from++;
         }
-        to += GOP->Mode->Info->HorizontalResolution - width;
+        to += (GOP->Mode->Info->HorizontalResolution - width) / 2;
     }
 }
 

@@ -318,7 +318,7 @@ void start()
             {
                 drawImage(4 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
             }
-            drawRectangle(1 * 32, GOP->Mode->Info->VerticalResolution - 28, 1, 24, black);
+            drawRectangle(1 * 32 - 1, GOP->Mode->Info->VerticalResolution - 28, 2, 24, black);
             window = (Window*)&windows;
             uint64_t i = 1;
             while (iterateList((void**)&window))

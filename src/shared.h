@@ -67,3 +67,30 @@ BOOLEAN iterateList(void** iterator)
     *iterator = **(void***)iterator;
     return *iterator;
 }
+
+void moveItemEnd(void** list, void* item)
+{
+    while (*list != item)
+    {
+        list = *list;
+    }
+    *list = *(void**)item;
+    while (*list)
+    {
+        list = *list;
+    }
+    *list = item;
+    *(void**)item = NULL;
+}
+
+uint64_t listLength(void** list)
+{
+    void** current = (void**)&list;
+    uint64_t i = 0;
+    while (*current)
+    {
+        *current = **(void***)current;
+        i++;
+    }
+    return i - 1;
+}

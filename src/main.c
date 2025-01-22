@@ -185,23 +185,30 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
     {
         if (pressed)
         {
+            uint64_t length = listLength((void**)&windows);
+            Window** newWindows = allocate(length * 8);
             Window* window = (Window*)&windows;
-            uint64_t i = 1;
+            uint64_t reverse = length - 1;
             while (iterateList((void**)&window))
             {
-                if (window->fullscreen)
+                newWindows[reverse--] = window;
+            }
+            for (uint64_t i = 0; i < length; i++)
+            {
+                if (newWindows[i]->fullscreen)
                 {
                     if (focus || mouseY < GOP->Mode->Info->VerticalResolution - 32)
                     {
                         if (focus)
                         {
-                            ClickEvent* event = addItem((void**)&window->events, sizeof(ClickEvent));
+                            ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
                             event->id = 2;
                             event->size = sizeof(ClickEvent);
                             event->left = left;
                             event->pressed = pressed;
                         }
-                        focus = window;
+                        focus = newWindows[i];
+                        moveItemEnd((void**)&windows, newWindows[i]);
                         break;
                     }
                 }
@@ -210,35 +217,38 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     uint64_t x = 5 + i * 32;
                     if (mouseX >= x && mouseX < x + 24)
                     {
-                        focus = window;
+                        focus = newWindows[i];
+                        moveItemEnd((void**)&windows, newWindows[i]);
                         break;
                     }
                 }
-                else if (mouseX >= window->x + window->width - 22 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 10 && mouseY < window->y + 42)
+                else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
                 {
-                    Event* event = addItem((void**)&window->events, sizeof(Event));
+                    Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
                     event->id = 0;
                     event->size = sizeof(Event);
                     break;
                 }
-                else if (mouseX >= window->x && mouseX < window->x + window->width + 20 && mouseY >= window->y && mouseY < window->y + 47)
+                else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
                 {
-                    dragging = window;
-                    focus = window;
+                    dragging = newWindows[i];
+                    focus = newWindows[i];
+                    moveItemEnd((void**)&windows, newWindows[i]);
                     break;
                 }
-                else if (mouseX >= window->x + 10 && mouseX < window->x + window->width + 10 && mouseY >= window->y + 47 && mouseY < window->y + 47 + window->height)
+                else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
                 {
-                    focus = window;
-                    ClickEvent* event = addItem((void**)&window->events, sizeof(ClickEvent));
+                    focus = newWindows[i];
+                    ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
                     event->id = 2;
                     event->size = sizeof(ClickEvent);
                     event->left = left;
                     event->pressed = pressed;
+                    moveItemEnd((void**)&windows, newWindows[i]);
                     break;
                 }
-                i++;
             }
+            unallocate(newWindows, length * 8);
             if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
             {
                 for (uint8_t i = 0; i < 1; i++)

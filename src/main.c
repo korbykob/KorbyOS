@@ -214,7 +214,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                 }
                 else if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
                 {
-                    uint64_t x = 5 + i * 32;
+                    uint64_t x = 5 + (length - i) * 32;
                     if (mouseX >= x && mouseX < x + 24)
                     {
                         focus = newWindows[i];

@@ -156,6 +156,16 @@ void drawString(const CHAR16* string, uint32_t x, uint32_t y, EFI_GRAPHICS_OUTPU
     }
 }
 
+uint64_t stringLength(const CHAR16* string)
+{
+    uint64_t length = 0;
+    while (*string++ != 0)
+    {
+        length++;
+    }
+    return length * 16;
+}
+
 void fillScreen(EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL colours[2];

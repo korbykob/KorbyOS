@@ -315,7 +315,8 @@ void start()
             {
                 drawRectangle(window->x, window->y, window->width + 20, window->height + 57, focus == window ? white : black);
                 drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
-                drawString(window->title, window->x + 10, window->y + 10, black);
+                drawRectangle(window->x + 14, window->y + 14, 24, 24, white); // draw icon
+                drawString(window->title, (window->x + 10 + window->width / 2) - (stringLength(window->title) / 2), window->y + 10, black);
                 drawRectangle(window->x + window->width - 22, window->y + 10, 32, 32, red);
                 drawCharacter(L'X', window->x + window->width - 14, window->y + 10, black);
                 drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
@@ -337,7 +338,7 @@ void start()
                 {
                     drawRectangle(3 + i * 32, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
                 }
-                drawRectangle(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, white);
+                drawRectangle(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, white); // draw icon
                 i++;
             }
         }

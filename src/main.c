@@ -195,6 +195,16 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
             }
             for (uint64_t i = 0; i < length; i++)
             {
+                if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+                {
+                    uint64_t x = 5 + (length - i) * 32;
+                    if (mouseX >= x && mouseX < x + 24)
+                    {
+                        focus = newWindows[i];
+                        moveItemEnd((void**)&windows, newWindows[i]);
+                        break;
+                    }
+                }
                 if (newWindows[i]->fullscreen)
                 {
                     if (focus || mouseY < GOP->Mode->Info->VerticalResolution - 32)
@@ -207,16 +217,6 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                             event->left = left;
                             event->pressed = pressed;
                         }
-                        focus = newWindows[i];
-                        moveItemEnd((void**)&windows, newWindows[i]);
-                        break;
-                    }
-                }
-                else if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
-                {
-                    uint64_t x = 5 + (length - i) * 32;
-                    if (mouseX >= x && mouseX < x + 24)
-                    {
                         focus = newWindows[i];
                         moveItemEnd((void**)&windows, newWindows[i]);
                         break;

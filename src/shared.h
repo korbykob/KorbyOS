@@ -18,6 +18,7 @@ typedef struct
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
     BOOLEAN hideMouse;
     BOOLEAN fullscreen;
+    BOOLEAN minimised;
     Event* events;
 } Window;
 typedef struct

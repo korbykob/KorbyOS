@@ -61,6 +61,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
     window->buffer = allocate(width * height * 4);
     window->hideMouse = FALSE;
     window->fullscreen = FALSE;
+    window->minimised = FALSE;
     window->events = NULL;
     focus = window;
     return window;
@@ -77,6 +78,7 @@ Window* allocateFullscreenWindow()
     window->buffer = allocate(window->width * window->height * 4);
     window->hideMouse = FALSE;
     window->fullscreen = TRUE;
+    window->minimised = FALSE;
     window->events = NULL;
     focus = window;
     return window;
@@ -200,52 +202,77 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     uint64_t x = 5 + (length - i) * 32;
                     if (mouseX >= x && mouseX < x + 24)
                     {
-                        focus = newWindows[i];
-                        moveItemEnd((void**)&windows, newWindows[i]);
-                        break;
-                    }
-                }
-                if (newWindows[i]->fullscreen)
-                {
-                    if (focus || mouseY < GOP->Mode->Info->VerticalResolution - 32)
-                    {
-                        if (focus)
+                        newWindows[i]->minimised = !newWindows[i]->minimised;
+                        if (!newWindows[i]->minimised)
                         {
-                            ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
-                            event->id = 2;
-                            event->size = sizeof(ClickEvent);
-                            event->left = left;
-                            event->pressed = pressed;
+                            focus = newWindows[i];
+                            moveItemEnd((void**)&windows, newWindows[i]);
                         }
+                        else if (focus == newWindows[i])
+                        {
+                            focus = NULL;
+                        }
+                        break;
+                    }
+                }
+                if (!newWindows[i]->minimised)
+                {
+                    if (newWindows[i]->fullscreen)
+                    {
+                        if (focus || mouseY < GOP->Mode->Info->VerticalResolution - 32)
+                        {
+                            if (focus)
+                            {
+                                ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
+                                event->id = 2;
+                                event->size = sizeof(ClickEvent);
+                                event->left = left;
+                                event->pressed = pressed;
+                            }
+                            focus = newWindows[i];
+                            moveItemEnd((void**)&windows, newWindows[i]);
+                            break;
+                        }
+                    }
+                    else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
+                    {
+                        Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
+                        event->id = 0;
+                        event->size = sizeof(Event);
+                        break;
+                    }
+                    else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
+                    {
+                        newWindows[i]->minimised = !newWindows[i]->minimised;
+                        if (!newWindows[i]->minimised)
+                        {
+                            focus = newWindows[i];
+                            moveItemEnd((void**)&windows, newWindows[i]);
+                        }
+                        else if (focus == newWindows[i])
+                        {
+                            focus = NULL;
+                        }
+                        break;
+                    }
+                    else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
+                    {
+                        dragging = newWindows[i];
                         focus = newWindows[i];
                         moveItemEnd((void**)&windows, newWindows[i]);
                         break;
                     }
-                }
-                else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
-                {
-                    Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
-                    event->id = 0;
-                    event->size = sizeof(Event);
-                    break;
-                }
-                else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
-                {
-                    dragging = newWindows[i];
-                    focus = newWindows[i];
-                    moveItemEnd((void**)&windows, newWindows[i]);
-                    break;
-                }
-                else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
-                {
-                    focus = newWindows[i];
-                    ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
-                    event->id = 2;
-                    event->size = sizeof(ClickEvent);
-                    event->left = left;
-                    event->pressed = pressed;
-                    moveItemEnd((void**)&windows, newWindows[i]);
-                    break;
+                    else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
+                    {
+                        focus = newWindows[i];
+                        ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
+                        event->id = 2;
+                        event->size = sizeof(ClickEvent);
+                        event->left = left;
+                        event->pressed = pressed;
+                        moveItemEnd((void**)&windows, newWindows[i]);
+                        break;
+                    }
                 }
             }
             unallocate(newWindows, length * 8);
@@ -307,19 +334,24 @@ void start()
         Window* window = (Window*)&windows;
         while (iterateList((void**)&window))
         {
-            if (window->fullscreen)
+            if (!window->minimised)
             {
-                blit(window->buffer, videoBuffer);
-            }
-            else
-            {
-                drawRectangle(window->x, window->y, window->width + 20, window->height + 57, focus == window ? white : black);
-                drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
-                drawRectangle(window->x + 14, window->y + 14, 24, 24, white); // draw icon
-                drawString(window->title, (window->x + 10 + window->width / 2) - (stringLength(window->title) / 2), window->y + 10, black);
-                drawRectangle(window->x + window->width - 22, window->y + 10, 32, 32, red);
-                drawCharacter(L'X', window->x + window->width - 14, window->y + 10, black);
-                drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
+                if (window->fullscreen)
+                {
+                    blit(window->buffer, videoBuffer);
+                }
+                else
+                {
+                    drawRectangle(window->x, window->y, window->width + 20, window->height + 57, focus == window ? white : black);
+                    drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
+                    drawRectangle(window->x + 14, window->y + 14, 24, 24, white); // draw icon
+                    drawString(window->title, (window->x + 10 + window->width / 2) - (stringLength(window->title) / 2), window->y + 10, black);
+                    drawRectangle(window->x + window->width - 22, window->y + 10, 32, 32, red);
+                    drawCharacter(L'X', window->x + window->width - 14, window->y + 10, black);
+                    drawRectangle(window->x + window->width - 59, window->y + 10, 32, 32, black);
+                    drawCharacter(L'-', window->x + window->width - 51, window->y + 10, white);
+                    drawImage(window->x + 10, window->y + 47, window->width, window->height, window->buffer);
+                }
             }
         }
         if (!focus || !focus->fullscreen)
@@ -334,7 +366,7 @@ void start()
             uint64_t i = 1;
             while (iterateList((void**)&window))
             {
-                if (focus == window)
+                if (!window->minimised)
                 {
                     drawRectangle(3 + i * 32, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
                 }

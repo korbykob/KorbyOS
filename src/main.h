@@ -166,11 +166,11 @@ uint64_t stringLength(const CHAR16* string)
     return length * 16;
 }
 
-void fillScreen(EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
+void fillScreen(EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour)
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL colours[2];
-    colours[0] = color;
-    colours[1] = color;
+    colours[0] = colour;
+    colours[1] = colour;
     uint64_t* buffer = (uint64_t*)videoBuffer;
     for (uint64_t i = 0; i < (GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution) / 2; i++)
     {
@@ -178,11 +178,11 @@ void fillScreen(EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
     }
 }
 
-void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL color)
+void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour)
 {
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL colours[2];
-    colours[0] = color;
-    colours[1] = color;
+    colours[0] = colour;
+    colours[1] = colour;
     uint64_t* address = (uint64_t*)(videoBuffer + y * GOP->Mode->Info->HorizontalResolution + x);
     for (uint32_t y = 0; y < height; y++)
     {

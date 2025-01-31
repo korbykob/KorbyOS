@@ -47,7 +47,7 @@ BOOLEAN readFile(const CHAR16* name, uint8_t** data, uint64_t* size)
 {
     uint64_t result = 0;
     __asm__ volatile ("movq $7, %%rdi; movq %1, %%rsi; movq %2, %%rdx; movq %3, %%rcx; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)name), "r"((uint64_t)data), "r"((uint64_t)size) : "%rdi", "%rsi", "%rdx", "%rcx");
-    return (BOOLEAN*)result;
+    return (BOOLEAN)result;
 }
 
 void deleteFile(const CHAR16* name)

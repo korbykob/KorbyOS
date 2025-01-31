@@ -130,7 +130,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return (uint64_t)createFile((const CHAR16*)arg1, arg2);
             break;
         case 7:
-            return (uint64_t)readFile((const CHAR16*)arg1, (uint8_t**)arg2, (uint64_t*)arg3);
+            return (uint64_t)readFile((const CHAR16*)arg1, (uint64_t*)arg2);
             break;
         case 8:
             deleteFile((const CHAR16*)arg1);

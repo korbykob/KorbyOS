@@ -99,22 +99,21 @@ void* createFile(const CHAR16* name, uint64_t size)
     return file->data;
 }
 
-BOOLEAN readFile(const CHAR16* name, uint8_t** data, uint64_t* size)
+uint8_t* readFile(const CHAR16* name, uint64_t* size)
 {
     File* file = (File*)&files;
     while (iterateList((void**)&file))
     {
         if (StrCmp(name, file->name) == 0)
         {
-            *data = file->data;
             if (size)
             {
                 *size = file->size;
             }
-            return TRUE;
+            return file->data;
         }
     }
-    return FALSE;
+    return NULL;
 }
 
 void deleteFile(const CHAR16* name)

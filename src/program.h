@@ -43,11 +43,11 @@ void* createFile(const CHAR16* name, uint64_t size)
     return (void*)result;
 }
 
-BOOLEAN readFile(const CHAR16* name, uint8_t** data, uint64_t* size)
+uint8_t* readFile(const CHAR16* name, uint64_t* size)
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $7, %%rdi; movq %1, %%rsi; movq %2, %%rdx; movq %3, %%rcx; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)name), "r"((uint64_t)data), "r"((uint64_t)size) : "%rdi", "%rsi", "%rdx", "%rcx");
-    return (BOOLEAN)result;
+    __asm__ volatile ("movq $7, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)name), "r"((uint64_t)size) : "%rdi", "%rsi", "%rdx");
+    return (uint8_t*)result;
 }
 
 void deleteFile(const CHAR16* name)

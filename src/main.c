@@ -220,15 +220,24 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     uint64_t x = 5 + (length - i) * 32;
                     if (mouseX >= x && mouseX < x + 24)
                     {
-                        newWindows[i]->minimised = !newWindows[i]->minimised;
-                        if (!newWindows[i]->minimised)
+                        if (newWindows[i]->minimised)
                         {
+                            newWindows[i]->minimised = FALSE;
                             focus = newWindows[i];
                             moveItemEnd((void**)&windows, newWindows[i]);
                         }
-                        else if (focus == newWindows[i])
+                        else
                         {
-                            focus = NULL;
+                            if (focus == newWindows[i])
+                            {
+                                focus = NULL;
+                                newWindows[i]->minimised = TRUE;
+                            }
+                            else
+                            {
+                                focus = newWindows[i];
+                                moveItemEnd((void**)&windows, newWindows[i]);
+                            }
                         }
                         break;
                     }

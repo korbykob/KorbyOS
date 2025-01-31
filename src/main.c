@@ -56,7 +56,7 @@ void quit(uint64_t id)
     }
 }
 
-Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
+Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
 {
     Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 20) / 2;
@@ -64,6 +64,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title)
     window->width = width;
     window->height = height;
     window->title = title;
+    window->icon = icon;
     window->buffer = allocate(width * height * 4);
     window->hideMouse = FALSE;
     window->fullscreen = FALSE;
@@ -81,6 +82,7 @@ Window* allocateFullscreenWindow()
     window->width = GOP->Mode->Info->HorizontalResolution;
     window->height = GOP->Mode->Info->VerticalResolution;
     window->title = NULL;
+    window->icon = NULL;
     window->buffer = allocate(window->width * window->height * 4);
     window->hideMouse = FALSE;
     window->fullscreen = TRUE;
@@ -100,7 +102,7 @@ void unallocateWindow(Window* window)
     removeItem((void**)&windows, window, sizeof(Window));
 }
 
-uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3)
+uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4)
 {
     switch (code)
     {
@@ -115,7 +117,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return 0;
             break;
         case 3:
-            return (uint64_t)allocateWindow(arg1, arg2, (CHAR16*)arg3);
+            return (uint64_t)allocateWindow(arg1, arg2, (CHAR16*)arg3, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)arg4);
             break;
         case 4:
             return (uint64_t)allocateFullscreenWindow();
@@ -342,19 +344,7 @@ void start()
         {
             if (StrCmp(file->name + StrLen(file->name) - 3, L"bmp") == 0)
             {
-                uint16_t pixel = 0;
-                uint8_t* fileBuffer = file->data + 0x36;
-                for (uint8_t y = 0; y < 24; y++)
-                {
-                    for (uint8_t x = 0; x < 24; x++)
-                    {
-                        uint64_t index = ((23 - y) * 24 + x) * 3;
-                        programs[program].icon[pixel].Blue = fileBuffer[index];
-                        programs[program].icon[pixel].Green = fileBuffer[index + 1];
-                        programs[program].icon[pixel].Red = fileBuffer[index + 2];
-                        pixel++;
-                    }
-                }
+                readBitmap(file->data, programs[program].icon, 24, 24);
             }
             else if (StrCmp(file->name + StrLen(file->name) - 3, L"bin") == 0)
             {
@@ -389,7 +379,7 @@ void start()
                 {
                     drawRectangle(window->x, window->y, window->width + 20, window->height + 57, focus == window ? white : black);
                     drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
-                    drawRectangle(window->x + 14, window->y + 14, 24, 24, white); // draw icon
+                    drawImage(window->x + 14, window->y + 14, 24, 24, window->icon);
                     drawString(window->title, (window->x + 10 + window->width / 2) - (StrLen(window->title) * 8), window->y + 10, black);
                     drawRectangle(window->x + window->width - 22, window->y + 10, 32, 32, red);
                     drawCharacter(L'X', window->x + window->width - 14, window->y + 10, black);
@@ -415,7 +405,7 @@ void start()
                 {
                     drawRectangle(3 + i * 32, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
                 }
-                drawRectangle(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, white); // draw icon
+                drawImage(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, window->icon);
                 i++;
             }
         }

@@ -13,7 +13,11 @@ int64_t y = 0;
 void _start(uint64_t id)
 {
     pid = id;
-    window = allocateWindow(640, 360, L"Game");
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    uint8_t* data = NULL;
+    readFile(L"programs/test/test.bmp", &data, NULL);
+    readBitmap(data, icon, 24, 24);
+    window = allocateWindow(640, 360, L"Game", icon);
     uint64_t* clear = (uint64_t*)window->buffer;
     for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
     {

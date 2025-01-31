@@ -15,6 +15,7 @@ typedef struct
     uint32_t width;
     uint32_t height;
     CHAR16* title;
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
     BOOLEAN hideMouse;
     BOOLEAN fullscreen;
@@ -47,6 +48,22 @@ void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
     for (uint64_t i = 0; i < size; i++)
     {
         *destination++ = *source++;
+    }
+}
+
+void readBitmap(uint8_t* bitmap, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination, uint64_t width, uint64_t height)
+{
+    uint8_t* fileBuffer = bitmap + 0x36;
+    for (uint64_t y = 0; y < height; y++)
+    {
+        for (uint64_t x = 0; x < width; x++)
+        {
+            uint64_t index = ((height - y - 1) * width + x) * 3;
+            destination->Blue = fileBuffer[index];
+            destination->Green = fileBuffer[index + 1];
+            destination->Red = fileBuffer[index + 2];
+            destination++;
+        }
     }
 }
 

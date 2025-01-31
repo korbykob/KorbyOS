@@ -99,15 +99,18 @@ void* createFile(const CHAR16* name, uint64_t size)
     return file->data;
 }
 
-BOOLEAN readFile(const CHAR16* name, uint8_t** binary, uint64_t* size)
+BOOLEAN readFile(const CHAR16* name, uint8_t** data, uint64_t* size)
 {
     File* file = (File*)&files;
     while (iterateList((void**)&file))
     {
         if (StrCmp(name, file->name) == 0)
         {
-            *binary = file->data;
-            *size = file->size;
+            *data = file->data;
+            if (size)
+            {
+                *size = file->size;
+            }
             return TRUE;
         }
     }
@@ -440,7 +443,7 @@ __attribute__((interrupt)) void mouse(InterruptFrame* frame)
     outb(0x20, 0x20);
 }
 
-uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4);
 
 void start();
 

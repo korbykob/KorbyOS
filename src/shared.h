@@ -42,6 +42,14 @@ void* allocate(uint64_t amount);
 
 void unallocate(void* pointer, uint64_t amount);
 
+void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
+{
+    for (uint64_t i = 0; i < size; i++)
+    {
+        *destination++ = *source++;
+    }
+}
+
 void* addItem(void** list, uint64_t size)
 {
     while (*list)

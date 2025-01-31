@@ -24,6 +24,12 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL red = { 0, 0, 255 };
 int64_t mouseX = 0;
 int64_t mouseY = 0;
+struct
+{
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24*24];
+    uint64_t size;
+    uint8_t* data;
+} programs[1];
 typedef struct {
     void* next;
     uint64_t size;
@@ -307,7 +313,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         program->size = programs[i].size;
                         program->id = id;
                         program->start = allocate(programs[i].size);
-                        uint8_t* source = programs[i].binary;
+                        uint8_t* source = programs[i].data;
                         uint8_t* destination = (uint8_t*)program->start;
                         for (uint64_t i2 = 0; i2 < programs[i].size; i2++)
                         {
@@ -328,6 +334,35 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 
 void start()
 {
+    uint8_t program = 0;
+    File* file = (File*)&files;
+    while (iterateList((void**)&file))
+    {
+        if (StrnCmp(file->name, L"programs/", 9) == 0)
+        {
+            if (StrCmp(file->name + StrLen(file->name) - 3, L"bmp") == 0)
+            {
+                uint16_t pixel = 0;
+                uint8_t* fileBuffer = file->data + 0x36;
+                for (uint8_t y = 0; y < 24; y++)
+                {
+                    for (uint8_t x = 0; x < 24; x++)
+                    {
+                        uint64_t index = ((23 - y) * 24 + x) * 3;
+                        programs[program].icon[pixel].Blue = fileBuffer[index];
+                        programs[program].icon[pixel].Green = fileBuffer[index + 1];
+                        programs[program].icon[pixel].Red = fileBuffer[index + 2];
+                        pixel++;
+                    }
+                }
+            }
+            else if (StrCmp(file->name + StrLen(file->name) - 3, L"bin") == 0)
+            {
+                programs[program].size = file->size;
+                programs[program].data = file->data;
+            }
+        }
+    }
     mouseX = GOP->Mode->Info->HorizontalResolution / 2;
     mouseY = GOP->Mode->Info->VerticalResolution / 2;
     while (TRUE)

@@ -11,12 +11,6 @@ uint8_t* font = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24*24];
-    uint64_t size;
-    uint8_t* binary;
-} programs[1];
-struct
-{
     uint16_t lower;
     uint16_t selector;
     uint8_t ist;
@@ -43,7 +37,7 @@ typedef struct {
     void* next;
     CHAR16* name;
     uint64_t size;
-    uint8_t* binary;
+    uint8_t* data;
 } File;
 File* files = NULL;
 
@@ -101,8 +95,8 @@ void* createFile(const CHAR16* name, uint64_t size)
     file->name = allocate((StrLen(name) + 1) * 2);
     StrCpy(file->name, name);
     file->size = size;
-    file->binary = allocate(size);
-    return file->binary;
+    file->data = allocate(size);
+    return file->data;
 }
 
 BOOLEAN readFile(const CHAR16* name, uint8_t** binary, uint64_t* size)
@@ -112,7 +106,7 @@ BOOLEAN readFile(const CHAR16* name, uint8_t** binary, uint64_t* size)
     {
         if (StrCmp(name, file->name) == 0)
         {
-            *binary = file->binary;
+            *binary = file->data;
             *size = file->size;
             return TRUE;
         }
@@ -129,7 +123,7 @@ void deleteFile(const CHAR16* name)
         {
             removeItem((void**)&files, file, sizeof(File));
             unallocate(file->name, (StrLen(file->name) + 1) * 2);
-            unallocate(file->binary, file->size);
+            unallocate(file->data, file->size);
             break;
         }
     }
@@ -300,34 +294,19 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         }
     }
     FreePool(wallpaperFile);
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"test.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\test.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t bmpSize = info->FileSize;
     FreePool(info);
-    uint8_t* bmpFile = AllocatePool(bmpSize);
-    uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmpFile);
+    uint8_t* bmp = AllocatePool(bmpSize);
+    uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmp);
     uefi_call_wrapper(file->Close, 1, file);
-    uint16_t pixel = 0;
-    fileBuffer = bmpFile + 0x36;
-    for (uint8_t y = 0; y < 24; y++)
-    {
-        for (uint8_t x = 0; x < 24; x++)
-        {
-            uint64_t index = ((23 - y) * 24 + x) * 3;
-            programs[0].icon[pixel].Blue = fileBuffer[index];
-            programs[0].icon[pixel].Green = fileBuffer[index + 1];
-            programs[0].icon[pixel].Red = fileBuffer[index + 2];
-            pixel++;
-        }
-    }
-    FreePool(bmpFile);
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"test.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\test.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t testSize = info->FileSize;
     FreePool(info);
-    programs[0].size = testSize;
-    programs[0].binary = AllocatePool(testSize);
-    uefi_call_wrapper(file->Read, 3, file, &testSize, programs[0].binary);
+    uint8_t* test = AllocatePool(testSize);
+    uefi_call_wrapper(file->Read, 3, file, &testSize, test);
     uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;
@@ -344,6 +323,14 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         }
     }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
+    File* newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/test/test.bmp";
+    newFile->size = bmpSize;
+    newFile->data = bmp;
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/test/test.bin";
+    newFile->size = testSize;
+    newFile->data = test;
     uint64_t gdt[3];
     gdt[0] = 0;
     gdt[1] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41) | ((uint64_t)1 << 43) | ((uint64_t)1 << 53);
@@ -359,12 +346,12 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     return EFI_SUCCESS;
 }
 
-static inline void outb(uint16_t port, uint8_t value)
+void outb(uint16_t port, uint8_t value)
 {
     __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
 }
 
-static inline uint8_t inb(uint16_t port)
+uint8_t inb(uint16_t port)
 {
     uint8_t value = 0;
     __asm__ volatile ("inb %w1, %b0" : "=a"(value) : "Nd"(port) : "memory");

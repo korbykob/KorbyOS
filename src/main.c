@@ -118,6 +118,16 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             unallocateWindow((Window*)arg1);
             return 0;
             break;
+        case 6:
+            return (uint64_t)createFile((const CHAR16*)arg1, arg2);
+            break;
+        case 7:
+            return (uint64_t)readFile((const CHAR16*)arg1, (uint8_t**)arg2, (uint64_t*)arg3);
+            break;
+        case 8:
+            deleteFile((const CHAR16*)arg1);
+            return 0;
+            break;
     }
     return 0;
 }
@@ -345,7 +355,7 @@ void start()
                     drawRectangle(window->x, window->y, window->width + 20, window->height + 57, focus == window ? white : black);
                     drawRectangle(window->x + 5, window->y + 5, window->width + 10, window->height + 47, grey);
                     drawRectangle(window->x + 14, window->y + 14, 24, 24, white); // draw icon
-                    drawString(window->title, (window->x + 10 + window->width / 2) - (stringLength(window->title) / 2), window->y + 10, black);
+                    drawString(window->title, (window->x + 10 + window->width / 2) - (StrLen(window->title) * 8), window->y + 10, black);
                     drawRectangle(window->x + window->width - 22, window->y + 10, 32, 32, red);
                     drawCharacter(L'X', window->x + window->width - 14, window->y + 10, black);
                     drawRectangle(window->x + window->width - 59, window->y + 10, 32, 32, black);

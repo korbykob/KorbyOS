@@ -39,6 +39,13 @@ uint8_t mouseCycle = 2;
 uint8_t mouseBytes[3];
 BOOLEAN lastLeftClick = FALSE;
 BOOLEAN lastRightClick = FALSE;
+typedef struct {
+    void* next;
+    CHAR16* name;
+    uint64_t size;
+    uint8_t* binary;
+} File;
+File* files = NULL;
 
 void* allocate(uint64_t amount)
 {
@@ -85,6 +92,46 @@ void unallocate(void* pointer, uint64_t amount)
     for (uint64_t i = 0; i < amount; i++)
     {
         *room-- = FALSE;
+    }
+}
+
+void* createFile(const CHAR16* name, uint64_t size)
+{
+    File* file = addItem((void**)&files, sizeof(File));
+    file->name = allocate((StrLen(name) + 1) * 2);
+    StrCpy(file->name, name);
+    file->size = size;
+    file->binary = allocate(size);
+    return file->binary;
+}
+
+BOOLEAN readFile(const CHAR16* name, uint8_t** binary, uint64_t* size)
+{
+    File* file = (File*)&files;
+    while (iterateList((void**)&file))
+    {
+        if (StrCmp(name, file->name) == 0)
+        {
+            *binary = file->binary;
+            *size = file->size;
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+void deleteFile(const CHAR16* name)
+{
+    File* file = (File*)&files;
+    while (iterateList((void**)&file))
+    {
+        if (StrCmp(name, file->name) == 0)
+        {
+            removeItem((void**)&files, file, sizeof(File));
+            unallocate(file->name, (StrLen(file->name) + 1) * 2);
+            unallocate(file->binary, file->size);
+            break;
+        }
     }
 }
 
@@ -154,16 +201,6 @@ void drawString(const CHAR16* string, uint32_t x, uint32_t y, EFI_GRAPHICS_OUTPU
         }
         address -= GOP->Mode->Info->HorizontalResolution * 32 - 16;
     }
-}
-
-uint64_t stringLength(const CHAR16* string)
-{
-    uint64_t length = 0;
-    while (*string++ != 0)
-    {
-        length++;
-    }
-    return length * 16;
 }
 
 void fillScreen(EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour)

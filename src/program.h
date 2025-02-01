@@ -17,14 +17,14 @@ void unallocate(void* pointer, uint64_t amount)
     __asm__ volatile ("movq $2, %%rdi; movq %0, %%rsi; movq %1, %%rdx; int $0x80" :  : "r"((uint64_t)pointer), "r"(amount) : "%rdi", "%rsi", "%rdx");
 }
 
-Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
+Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
 {
     uint64_t result = 0;
     __asm__ volatile ("movq $3, %%rdi; movq %1, %%rsi; movq %2, %%rdx; movq %3, %%rcx; movq %4, %%r8; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)width), "r"((uint64_t)height), "r"((uint64_t)title), "r"((uint64_t)icon) : "%rdi", "%rsi", "%rdx", "%rcx");
     return (Window*)result;
 }
 
-Window* allocateFullscreenWindow(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
+Window* allocateFullscreenWindow(const CHAR16* icon)
 {
     uint64_t result = 0;
     __asm__ volatile ("movq $4, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)icon) : "%rdi", "%rsi");

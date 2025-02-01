@@ -56,16 +56,18 @@ void quit(uint64_t id)
     }
 }
 
-Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
+Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
 {
     Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 20) / 2;
     window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 57) / 2;
     window->width = width;
     window->height = height;
-    window->title = title;
-    window->icon = icon;
-    window->buffer = allocate(width * height * 4);
+    window->title = allocate((StrLen(title) + 1) * 2);
+    StrCpy(window->title, title);
+    window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    readBitmap(readFile(icon, NULL), window->icon, 24, 24);
+    window->buffer = allocate(width * height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     window->hideMouse = FALSE;
     window->fullscreen = FALSE;
     window->minimised = FALSE;
@@ -74,7 +76,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title, EFI_GRAPH
     return window;
 }
 
-Window* allocateFullscreenWindow(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
+Window* allocateFullscreenWindow(const CHAR16* icon)
 {
     Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = 0;
@@ -82,8 +84,9 @@ Window* allocateFullscreenWindow(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
     window->width = GOP->Mode->Info->HorizontalResolution;
     window->height = GOP->Mode->Info->VerticalResolution;
     window->title = NULL;
-    window->icon = icon;
-    window->buffer = allocate(window->width * window->height * 4);
+    window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    readBitmap(readFile(icon, NULL), window->icon, 24, 24);
+    window->buffer = allocate(window->width * window->height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     window->hideMouse = FALSE;
     window->fullscreen = TRUE;
     window->minimised = FALSE;
@@ -98,7 +101,12 @@ void unallocateWindow(Window* window)
     {
         focus = NULL;
     }
-    unallocate(window->buffer, window->width * window->height * 4);
+    if (window->title)
+    {
+        unallocate(window->title, (StrLen(window->title) + 1) * 2);
+    }
+    unallocate(window->icon, 24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    unallocate(window->buffer, window->width * window->height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     removeItem((void**)&windows, window, sizeof(Window));
 }
 
@@ -117,10 +125,10 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return 0;
             break;
         case 3:
-            return (uint64_t)allocateWindow(arg1, arg2, (CHAR16*)arg3, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)arg4);
+            return (uint64_t)allocateWindow(arg1, arg2, (const CHAR16*)arg3, (const CHAR16*)arg4);
             break;
         case 4:
-            return (uint64_t)allocateFullscreenWindow((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)arg1);
+            return (uint64_t)allocateFullscreenWindow((const CHAR16*)arg1);
             break;
         case 5:
             unallocateWindow((Window*)arg1);

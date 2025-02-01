@@ -2,6 +2,7 @@
 
 uint64_t pid = 0;
 Window* window = NULL;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon = NULL;
 BOOLEAN w = FALSE;
 BOOLEAN a = FALSE;
 BOOLEAN s = FALSE;
@@ -13,9 +14,9 @@ int64_t y = 0;
 void _start(uint64_t id)
 {
     pid = id;
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(L"programs/test/test.bmp", NULL), icon, 24, 24);
-    window = allocateWindow(640, 360, L"Game", icon);
+    window = allocateWindow(2, 2, L"Game", icon);
     uint64_t* clear = (uint64_t*)window->buffer;
     for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
     {
@@ -35,6 +36,7 @@ void update()
         {
             case 0:
                 unallocateWindow(window);
+                unallocate(icon, 24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
                 quit(pid);
                 break;
             case 1:
@@ -67,7 +69,7 @@ void update()
     {
         for (uint32_t x = 0; x < 32; x++)
         {
-            *address++ = black;
+            //*address++ = black;
         }
         address += window->width - 32;
     }
@@ -114,7 +116,7 @@ void update()
     {
         for (uint32_t x = 0; x < 32; x++)
         {
-            *address++ = white;
+            //*address++ = white;
         }
         address += window->width - 32;
     }

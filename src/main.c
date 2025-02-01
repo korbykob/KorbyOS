@@ -66,7 +66,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, con
     window->title = allocate((StrLen(title) + 1) * 2);
     StrCpy(window->title, title);
     window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    readBitmap(readFile(icon, NULL), window->icon, 24, 24);
+    readBitmap(readFile(icon, NULL), window->icon);
     window->buffer = allocate(width * height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     window->hideMouse = FALSE;
     window->fullscreen = FALSE;
@@ -85,7 +85,7 @@ Window* allocateFullscreenWindow(const CHAR16* icon)
     window->height = GOP->Mode->Info->VerticalResolution;
     window->title = NULL;
     window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    readBitmap(readFile(icon, NULL), window->icon, 24, 24);
+    readBitmap(readFile(icon, NULL), window->icon);
     window->buffer = allocate(window->width * window->height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     window->hideMouse = FALSE;
     window->fullscreen = TRUE;
@@ -361,7 +361,7 @@ void start()
         {
             if (StrCmp(file->name + StrLen(file->name) - 3, L"bmp") == 0)
             {
-                readBitmap(file->data, programs[program].icon, 24, 24);
+                readBitmap(file->data, programs[program].icon);
             }
             else if (StrCmp(file->name + StrLen(file->name) - 3, L"bin") == 0)
             {

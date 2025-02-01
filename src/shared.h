@@ -51,9 +51,11 @@ void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
     }
 }
 
-void readBitmap(uint8_t* bitmap, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination, uint64_t width, uint64_t height)
+void readBitmap(uint8_t* bitmap, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)
 {
     uint8_t* fileBuffer = bitmap + 0x36;
+    int32_t width = *(int32_t*)(bitmap + 18);
+    int32_t height = *(int32_t*)(bitmap + 22);
     for (uint64_t y = 0; y < height; y++)
     {
         for (uint64_t x = 0; x < width; x++)

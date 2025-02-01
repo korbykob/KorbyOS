@@ -69,7 +69,7 @@ void update()
     {
         for (uint32_t x = 0; x < 32; x++)
         {
-            //*address++ = black;
+            *address++ = black;
         }
         address += window->width - 32;
     }
@@ -116,7 +116,7 @@ void update()
     {
         for (uint32_t x = 0; x < 32; x++)
         {
-            //*address++ = white;
+            *address++ = white;
         }
         address += window->width - 32;
     }

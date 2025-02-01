@@ -74,7 +74,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title, EFI_GRAPH
     return window;
 }
 
-Window* allocateFullscreenWindow()
+Window* allocateFullscreenWindow(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
 {
     Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = 0;
@@ -82,7 +82,7 @@ Window* allocateFullscreenWindow()
     window->width = GOP->Mode->Info->HorizontalResolution;
     window->height = GOP->Mode->Info->VerticalResolution;
     window->title = NULL;
-    window->icon = NULL;
+    window->icon = icon;
     window->buffer = allocate(window->width * window->height * 4);
     window->hideMouse = FALSE;
     window->fullscreen = TRUE;
@@ -120,7 +120,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return (uint64_t)allocateWindow(arg1, arg2, (CHAR16*)arg3, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)arg4);
             break;
         case 4:
-            return (uint64_t)allocateFullscreenWindow();
+            return (uint64_t)allocateFullscreenWindow((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)arg1);
             break;
         case 5:
             unallocateWindow((Window*)arg1);
@@ -359,6 +359,7 @@ void start()
             {
                 programs[program].size = file->size;
                 programs[program].data = file->data;
+                program++;
             }
         }
     }
@@ -410,7 +411,7 @@ void start()
             uint64_t i = 1;
             while (iterateList((void**)&window))
             {
-                if (!window->minimised)
+                if (focus == window)
                 {
                     drawRectangle(3 + i * 32, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
                 }

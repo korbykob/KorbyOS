@@ -24,10 +24,10 @@ Window* allocateWindow(uint32_t width, uint32_t height, CHAR16* title, EFI_GRAPH
     return (Window*)result;
 }
 
-Window* allocateFullscreenWindow()
+Window* allocateFullscreenWindow(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon)
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $4, %%rdi; int $0x80; movq %%rax, %0" : "=r"(result) :  : "%rdi");
+    __asm__ volatile ("movq $4, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)icon) : "%rdi", "%rsi");
     return (Window*)result;
 }
 

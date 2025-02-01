@@ -256,13 +256,13 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     {
                         if (focus || mouseY < GOP->Mode->Info->VerticalResolution - 32)
                         {
-                            if (focus)
+                            if (focus == newWindows[i])
                             {
                                 ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
                                 event->id = 2;
                                 event->size = sizeof(ClickEvent);
                                 event->left = left;
-                                event->pressed = pressed;
+                                event->pressed = pressed; // make these work for undressed and right click
                             }
                             focus = newWindows[i];
                             moveItemEnd((void**)&windows, newWindows[i]);

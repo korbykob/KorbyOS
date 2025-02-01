@@ -270,12 +270,15 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
             }
             else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
             {
-                ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
-                event->id = 2;
-                event->size = sizeof(ClickEvent);
-                event->left = left;
-                event->pressed = pressed;
-                if (focus != newWindows[i])
+                if (focus == newWindows[i])
+                {
+                    ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
+                    event->id = 2;
+                    event->size = sizeof(ClickEvent);
+                    event->left = left;
+                    event->pressed = pressed;
+                }
+                else if (left && pressed)
                 {
                     focus = newWindows[i];
                     moveItemEnd((void**)&windows, newWindows[i]);

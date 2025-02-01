@@ -209,144 +209,148 @@ void mouseMove(int16_t x, int16_t y)
 
 void mouseClick(BOOLEAN left, BOOLEAN pressed)
 {
-    if (left)
+    uint64_t length = listLength((void**)&windows);
+    Window** newWindows = allocate(length * 8);
+    Window* window = (Window*)&windows;
+    uint64_t reverse = length - 1;
+    while (iterateList((void**)&window))
     {
-        if (pressed)
+        newWindows[reverse--] = window;
+    }
+    for (uint64_t i = 0; i < length; i++)
+    {
+        if (left && pressed && (!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
         {
-            uint64_t length = listLength((void**)&windows);
-            Window** newWindows = allocate(length * 8);
-            Window* window = (Window*)&windows;
-            uint64_t reverse = length - 1;
-            while (iterateList((void**)&window))
+            uint64_t x = 5 + (length - i) * 32;
+            if (mouseX >= x && mouseX < x + 24)
             {
-                newWindows[reverse--] = window;
-            }
-            for (uint64_t i = 0; i < length; i++)
-            {
-                if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+                if (newWindows[i]->minimised)
                 {
-                    uint64_t x = 5 + (length - i) * 32;
-                    if (mouseX >= x && mouseX < x + 24)
-                    {
-                        if (newWindows[i]->minimised)
-                        {
-                            newWindows[i]->minimised = FALSE;
-                            focus = newWindows[i];
-                            moveItemEnd((void**)&windows, newWindows[i]);
-                        }
-                        else
-                        {
-                            if (focus == newWindows[i])
-                            {
-                                focus = NULL;
-                                newWindows[i]->minimised = TRUE;
-                            }
-                            else
-                            {
-                                focus = newWindows[i];
-                                moveItemEnd((void**)&windows, newWindows[i]);
-                            }
-                        }
-                        break;
-                    }
+                    newWindows[i]->minimised = FALSE;
+                    focus = newWindows[i];
+                    moveItemEnd((void**)&windows, newWindows[i]);
                 }
-                if (!newWindows[i]->minimised)
+                else
                 {
-                    if (newWindows[i]->fullscreen)
+                    if (focus == newWindows[i])
                     {
-                        if (focus || mouseY < GOP->Mode->Info->VerticalResolution - 32)
-                        {
-                            if (focus == newWindows[i])
-                            {
-                                ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
-                                event->id = 2;
-                                event->size = sizeof(ClickEvent);
-                                event->left = left;
-                                event->pressed = pressed; // make these work for undressed and right click
-                            }
-                            focus = newWindows[i];
-                            moveItemEnd((void**)&windows, newWindows[i]);
-                            break;
-                        }
+                        focus = NULL;
+                        newWindows[i]->minimised = TRUE;
                     }
-                    else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
+                    else
                     {
-                        Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
-                        event->id = 0;
-                        event->size = sizeof(Event);
-                        break;
-                    }
-                    else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
-                    {
-                        newWindows[i]->minimised = !newWindows[i]->minimised;
-                        if (!newWindows[i]->minimised)
-                        {
-                            focus = newWindows[i];
-                            moveItemEnd((void**)&windows, newWindows[i]);
-                        }
-                        else if (focus == newWindows[i])
-                        {
-                            focus = NULL;
-                        }
-                        break;
-                    }
-                    else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
-                    {
-                        dragging = newWindows[i];
                         focus = newWindows[i];
                         moveItemEnd((void**)&windows, newWindows[i]);
-                        break;
                     }
-                    else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
+                }
+                break;
+            }
+        }
+        else if (!newWindows[i]->minimised)
+        {
+            if (newWindows[i]->fullscreen)
+            {
+                if ((focus && focus->fullscreen) || mouseY < GOP->Mode->Info->VerticalResolution - 32)
+                {
+                    if (focus == newWindows[i])
                     {
-                        focus = newWindows[i];
                         ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
                         event->id = 2;
                         event->size = sizeof(ClickEvent);
                         event->left = left;
                         event->pressed = pressed;
-                        moveItemEnd((void**)&windows, newWindows[i]);
-                        break;
                     }
+                    else
+                    {
+                        focus = newWindows[i];
+                        moveItemEnd((void**)&windows, newWindows[i]);
+                    }
+                    break;
                 }
             }
-            unallocate(newWindows, length * 8);
-            if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+            else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
             {
-                for (uint8_t i = 0; i < 1; i++)
+                ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
+                event->id = 2;
+                event->size = sizeof(ClickEvent);
+                event->left = left;
+                event->pressed = pressed;
+                if (focus != newWindows[i])
                 {
-                    uint64_t x = 4 + i * 32;
-                    if (mouseX >= x && mouseX < x + 24)
+                    focus = newWindows[i];
+                    moveItemEnd((void**)&windows, newWindows[i]);
+                }
+                break;
+            }
+            else if (left && pressed)
+            {
+                if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
+                {
+                    Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
+                    event->id = 0;
+                    event->size = sizeof(Event);
+                    break;
+                }
+                else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
+                {
+                    if (focus == newWindows[i])
                     {
-                        uint64_t id = 0;
-                        Program* iterator = (Program*)&running;
-                        while (iterateList((void**)&iterator))
-                        {
-                            if (id == iterator->id)
-                            {
-                                id++;
-                                iterator = (Program*)&running;
-                            }
-                        }
-                        Program* program = addItem((void**)&running, sizeof(Program));
-                        program->size = programs[i].size;
-                        program->id = id;
-                        program->start = allocate(programs[i].size);
-                        uint8_t* source = programs[i].data;
-                        uint8_t* destination = (uint8_t*)program->start;
-                        for (uint64_t i2 = 0; i2 < programs[i].size; i2++)
-                        {
-                            *destination++ = *source++;
-                        }
-                        program->update = program->start + 5;
-                        program->start(id);
+                        focus = NULL;
                     }
+                    newWindows[i]->minimised = TRUE;
+                    break;
+                }
+                else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
+                {
+                    dragging = newWindows[i];
+                    if (focus != newWindows[i])
+                    {
+                        focus = newWindows[i];
+                        moveItemEnd((void**)&windows, newWindows[i]);
+                    }
+                    break;
                 }
             }
         }
-        else
+    }
+    unallocate(newWindows, length * 8);
+    if (left)
+    {
+        if (!pressed)
         {
             dragging = NULL;
+        }
+        else if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+        {
+            for (uint8_t i = 0; i < 1; i++)
+            {
+                uint64_t x = 4 + i * 32;
+                if (mouseX >= x && mouseX < x + 24)
+                {
+                    uint64_t id = 0;
+                    Program* iterator = (Program*)&running;
+                    while (iterateList((void**)&iterator))
+                    {
+                        if (id == iterator->id)
+                        {
+                            id++;
+                            iterator = (Program*)&running;
+                        }
+                    }
+                    Program* program = addItem((void**)&running, sizeof(Program));
+                    program->size = programs[i].size;
+                    program->id = id;
+                    program->start = allocate(programs[i].size);
+                    uint8_t* source = programs[i].data;
+                    uint8_t* destination = (uint8_t*)program->start;
+                    for (uint64_t i2 = 0; i2 < programs[i].size; i2++)
+                    {
+                        *destination++ = *source++;
+                    }
+                    program->update = program->start + 5;
+                    program->start(id);
+                }
+            }
         }
     }
 }

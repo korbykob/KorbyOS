@@ -41,6 +41,12 @@ Program* running = NULL;
 Window* windows = NULL;
 Window* dragging = NULL;
 Window* focus = NULL;
+typedef struct
+{
+    void* next;
+    Window* window;
+} Taskbar;
+Taskbar* taskbar = NULL;
 
 void quit(uint64_t id)
 {
@@ -73,6 +79,8 @@ Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, con
     window->minimised = FALSE;
     window->events = NULL;
     focus = window;
+    Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
+    item->window = window;
     return window;
 }
 
@@ -92,11 +100,22 @@ Window* allocateFullscreenWindow(const CHAR16* icon)
     window->minimised = FALSE;
     window->events = NULL;
     focus = window;
+    Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
+    item->window = window;
     return window;
 }
 
 void unallocateWindow(Window* window)
 {
+    Taskbar* item = (Taskbar*)&taskbar;
+    while (iterateList((void**)&item))
+    {
+        if (item->window == window)
+        {
+            removeItem((void**)&taskbar, item, sizeof(Taskbar));
+            break;
+        }
+    }
     if (focus == window)
     {
         focus = NULL;
@@ -209,48 +228,112 @@ void mouseMove(int16_t x, int16_t y)
 
 void mouseClick(BOOLEAN left, BOOLEAN pressed)
 {
-    uint64_t length = listLength((void**)&windows);
-    Window** newWindows = allocate(length * 8);
-    Window* window = (Window*)&windows;
-    uint64_t reverse = length - 1;
-    while (iterateList((void**)&window))
+    if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
     {
-        newWindows[reverse--] = window;
-    }
-    for (uint64_t i = 0; i < length; i++)
-    {
-        if (left && pressed && (!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
+        if (left && pressed)
         {
-            uint64_t x = 5 + (length - i) * 32;
-            if (mouseX >= x && mouseX < x + 24)
+            if (mouseX >= 32)
             {
-                if (newWindows[i]->minimised)
+                Taskbar* item = (Taskbar*)&taskbar;
+                uint64_t i = 1;
+                while (iterateList((void**)&item))
                 {
-                    newWindows[i]->minimised = FALSE;
-                    focus = newWindows[i];
-                    moveItemEnd((void**)&windows, newWindows[i]);
+                    uint64_t x = 5 + i * 32;
+                    if (mouseX >= x && mouseX < x + 24)
+                    {
+                        if (item->window->minimised)
+                        {
+                            item->window->minimised = FALSE;
+                            focus = item->window;
+                            moveItemEnd((void**)&windows, item->window);
+                        }
+                        else
+                        {
+                            if (focus == item->window)
+                            {
+                                focus = NULL;
+                                item->window->minimised = TRUE;
+                            }
+                            else
+                            {
+                                focus = item->window;
+                                moveItemEnd((void**)&windows, item->window);
+                            }
+                        }
+                        break;
+                    }
+                    i++;
                 }
-                else
+            }
+            else
+            {
+                for (uint8_t i = 0; i < 1; i++)
                 {
-                    if (focus == newWindows[i])
+                    uint64_t x = 4 + i * 32;
+                    if (mouseX >= x && mouseX < x + 24)
                     {
-                        focus = NULL;
-                        newWindows[i]->minimised = TRUE;
-                    }
-                    else
-                    {
-                        focus = newWindows[i];
-                        moveItemEnd((void**)&windows, newWindows[i]);
+                        uint64_t id = 0;
+                        Program* iterator = (Program*)&running;
+                        while (iterateList((void**)&iterator))
+                        {
+                            if (id == iterator->id)
+                            {
+                                id++;
+                                iterator = (Program*)&running;
+                            }
+                        }
+                        Program* program = addItem((void**)&running, sizeof(Program));
+                        program->size = programs[i].size;
+                        program->id = id;
+                        program->start = allocate(programs[i].size);
+                        uint8_t* source = programs[i].data;
+                        uint8_t* destination = (uint8_t*)program->start;
+                        for (uint64_t i2 = 0; i2 < programs[i].size; i2++)
+                        {
+                            *destination++ = *source++;
+                        }
+                        program->update = program->start + 5;
+                        program->start(id);
                     }
                 }
-                break;
             }
         }
-        else if (!newWindows[i]->minimised)
+    }
+    else
+    {
+        uint64_t length = listLength((void**)&windows);
+        Window** newWindows = allocate(length * 8);
+        Window* window = (Window*)&windows;
+        uint64_t reverse = length - 1;
+        while (iterateList((void**)&window))
         {
-            if (newWindows[i]->fullscreen)
+            newWindows[reverse--] = window;
+        }
+        for (uint64_t i = 0; i < length; i++)
+        {
+            if (!newWindows[i]->minimised)
             {
-                if ((focus && focus->fullscreen) || mouseY < GOP->Mode->Info->VerticalResolution - 32)
+                if (newWindows[i]->fullscreen)
+                {
+                    if ((focus && focus->fullscreen) || mouseY < GOP->Mode->Info->VerticalResolution - 32)
+                    {
+                        if (focus == newWindows[i])
+                        {
+                            ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
+                            event->id = 2;
+                            event->size = sizeof(ClickEvent);
+                            event->left = left;
+                            event->pressed = pressed;
+                        }
+                        else
+                        {
+                            focus = newWindows[i];
+                            moveItemEnd((void**)&windows, newWindows[i]);
+                        }
+                        break;
+                    }
+                }
+                else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
                 {
                     if (focus == newWindows[i])
                     {
@@ -260,101 +343,49 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         event->left = left;
                         event->pressed = pressed;
                     }
-                    else
+                    else if (left && pressed)
                     {
                         focus = newWindows[i];
                         moveItemEnd((void**)&windows, newWindows[i]);
                     }
                     break;
-                }
-            }
-            else if (mouseX >= newWindows[i]->x + 10 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 47 && mouseY < newWindows[i]->y + 47 + newWindows[i]->height)
-            {
-                if (focus == newWindows[i])
-                {
-                    ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
-                    event->id = 2;
-                    event->size = sizeof(ClickEvent);
-                    event->left = left;
-                    event->pressed = pressed;
                 }
                 else if (left && pressed)
                 {
-                    focus = newWindows[i];
-                    moveItemEnd((void**)&windows, newWindows[i]);
-                }
-                break;
-            }
-            else if (left && pressed)
-            {
-                if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
-                {
-                    Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
-                    event->id = 0;
-                    event->size = sizeof(Event);
-                    break;
-                }
-                else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
-                {
-                    if (focus == newWindows[i])
+                    if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
                     {
-                        focus = NULL;
+                        Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
+                        event->id = 0;
+                        event->size = sizeof(Event);
+                        break;
                     }
-                    newWindows[i]->minimised = TRUE;
-                    break;
-                }
-                else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
-                {
-                    dragging = newWindows[i];
-                    if (focus != newWindows[i])
+                    else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
                     {
-                        focus = newWindows[i];
-                        moveItemEnd((void**)&windows, newWindows[i]);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-    unallocate(newWindows, length * 8);
-    if (left)
-    {
-        if (!pressed)
-        {
-            dragging = NULL;
-        }
-        else if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
-        {
-            for (uint8_t i = 0; i < 1; i++)
-            {
-                uint64_t x = 4 + i * 32;
-                if (mouseX >= x && mouseX < x + 24)
-                {
-                    uint64_t id = 0;
-                    Program* iterator = (Program*)&running;
-                    while (iterateList((void**)&iterator))
-                    {
-                        if (id == iterator->id)
+                        if (focus == newWindows[i])
                         {
-                            id++;
-                            iterator = (Program*)&running;
+                            focus = NULL;
                         }
+                        newWindows[i]->minimised = TRUE;
+                        break;
                     }
-                    Program* program = addItem((void**)&running, sizeof(Program));
-                    program->size = programs[i].size;
-                    program->id = id;
-                    program->start = allocate(programs[i].size);
-                    uint8_t* source = programs[i].data;
-                    uint8_t* destination = (uint8_t*)program->start;
-                    for (uint64_t i2 = 0; i2 < programs[i].size; i2++)
+                    else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
                     {
-                        *destination++ = *source++;
+                        dragging = newWindows[i];
+                        if (focus != newWindows[i])
+                        {
+                            focus = newWindows[i];
+                            moveItemEnd((void**)&windows, newWindows[i]);
+                        }
+                        break;
                     }
-                    program->update = program->start + 5;
-                    program->start(id);
                 }
             }
         }
+        unallocate(newWindows, length * 8);
+    }
+    if (left && !pressed)
+    {
+        dragging = NULL;
     }
 }
 
@@ -422,15 +453,19 @@ void start()
                 drawImage(4 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
             }
             drawRectangle(1 * 32 - 1, GOP->Mode->Info->VerticalResolution - 28, 2, 24, black);
-            window = (Window*)&windows;
+            Taskbar* item = (Taskbar*)&taskbar;
             uint64_t i = 1;
-            while (iterateList((void**)&window))
+            while (iterateList((void**)&item))
             {
-                if (focus == window)
+                if (focus == item->window)
                 {
                     drawRectangle(3 + i * 32, GOP->Mode->Info->VerticalResolution - 30, 28, 28, black);
                 }
-                drawImage(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, window->icon);
+                if (!item->window->minimised)
+                {
+                    drawRectangle(5 + i * 32, GOP->Mode->Info->VerticalResolution - 2, 24, 2, black);
+                }
+                drawImage(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, item->window->icon);
                 i++;
             }
         }

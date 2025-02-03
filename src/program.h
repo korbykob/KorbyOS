@@ -1,8 +1,8 @@
 #include "shared.h"
 
-void quit(uint64_t id)
+void quit(uint64_t pid)
 {
-    __asm__ volatile ("movq $0, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"(id) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $0, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"(pid) : "%rdi", "%rsi");
 }
 
 void* allocate(uint64_t amount)

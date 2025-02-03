@@ -33,7 +33,7 @@ struct
 typedef struct {
     void* next;
     uint64_t size;
-    uint64_t id;
+    uint64_t pid;
     void (*start)(uint64_t id);
     void (*update)();
 } Program;
@@ -48,12 +48,12 @@ typedef struct
 } Taskbar;
 Taskbar* taskbar = NULL;
 
-void quit(uint64_t id)
+void quit(uint64_t pid)
 {
     Program* program = (Program*)&running;
     while (iterateList((void**)&program))
     {
-        if (program->id == id)
+        if (program->pid == pid)
         {
             unallocate(program->start, program->size);
             removeItem((void**)&running, program, sizeof(Program));
@@ -272,19 +272,19 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     uint64_t x = 4 + i * 32;
                     if (mouseX >= x && mouseX < x + 24)
                     {
-                        uint64_t id = 0;
+                        uint64_t pid = 0;
                         Program* iterator = (Program*)&running;
                         while (iterateList((void**)&iterator))
                         {
-                            if (id == iterator->id)
+                            if (pid == iterator->pid)
                             {
-                                id++;
+                                pid++;
                                 iterator = (Program*)&running;
                             }
                         }
                         Program* program = addItem((void**)&running, sizeof(Program));
                         program->size = programs[i].size;
-                        program->id = id;
+                        program->pid = pid;
                         program->start = allocate(programs[i].size);
                         uint8_t* source = programs[i].data;
                         uint8_t* destination = (uint8_t*)program->start;
@@ -293,7 +293,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                             *destination++ = *source++;
                         }
                         program->update = program->start + 5;
-                        program->start(id);
+                        program->start(pid);
                     }
                 }
             }

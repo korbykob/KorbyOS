@@ -1,6 +1,6 @@
 #include "../program.h"
 
-uint64_t pid = 0;
+uint64_t id = 0;
 Window* window = NULL;
 BOOLEAN w = FALSE;
 BOOLEAN a = FALSE;
@@ -10,9 +10,9 @@ BOOLEAN shift = FALSE;
 int64_t x = 0;
 int64_t y = 0;
 
-void _start(uint64_t id)
+void _start(uint64_t pid)
 {
-    pid = id;
+    id = pid;
     window = allocateWindow(640, 360, L"Game", L"programs/test/test.bmp");
     uint64_t* clear = (uint64_t*)window->buffer;
     for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
@@ -33,7 +33,7 @@ void update()
         {
             case 0:
                 unallocateWindow(window);
-                quit(pid);
+                quit(id);
                 break;
             case 1:
                 switch (((KeyEvent*)event)->scancode)

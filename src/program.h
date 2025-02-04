@@ -36,7 +36,7 @@ void unallocateWindow(Window* window)
     __asm__ volatile ("movq $5, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"((uint64_t)window) : "%rdi", "%rsi");
 }
 
-void* createFile(const CHAR16* name, uint64_t size)
+void* writeFile(const CHAR16* name, uint64_t size)
 {
     uint64_t result = 0;
     __asm__ volatile ("movq $6, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)name), "r"(size) : "%rdi", "%rsi", "%rdx");

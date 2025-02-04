@@ -89,11 +89,25 @@ void unallocate(void* pointer, uint64_t amount)
     }
 }
 
-void* createFile(const CHAR16* name, uint64_t size)
+void* writeFile(const CHAR16* name, uint64_t size)
 {
-    File* file = addItem((void**)&files, sizeof(File));
-    file->name = allocate((StrLen(name) + 1) * 2);
-    StrCpy(file->name, name);
+    File* file = NULL;
+    File* iterator = (File*)&files;
+    while (iterateList((void**)&iterator))
+    {
+        if (StrCmp(name, iterator->name) == 0)
+        {
+            file = iterator;
+            unallocate(file->data, file->size);
+            break;
+        }
+    }
+    if (!file)
+    {
+        file = addItem((void**)&files, sizeof(File));
+        file->name = allocate((StrLen(name) + 1) * 2);
+        StrCpy(file->name, name);
+    }
     file->size = size;
     file->data = allocate(size);
     return file->data;

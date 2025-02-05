@@ -89,6 +89,99 @@ void unallocate(void* pointer, uint64_t amount)
     }
 }
 
+EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
+{
+    InitializeLib(ImageHandle, SystemTable);
+    LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
+    uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
+    EFI_LOADED_IMAGE* image = NULL;
+    uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
+    EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
+    EFI_FILE_HANDLE file = NULL;
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"font.psf", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    EFI_FILE_INFO* info = LibFileInfo(file);
+    uint64_t fontSize = info->FileSize;
+    FreePool(info);
+    font = AllocatePool(fontSize);
+    uefi_call_wrapper(file->Read, 3, file, &fontSize, font);
+    uefi_call_wrapper(file->Close, 1, file);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t wallpaperSize = info->FileSize;
+    FreePool(info);
+    uint8_t* wallpaperFile = AllocatePool(wallpaperSize);
+    uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaperFile);
+    uefi_call_wrapper(file->Close, 1, file);
+    wallpaper = AllocatePool(GOP->Mode->FrameBufferSize);
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
+    uint8_t* fileBuffer = wallpaperFile + 0x36;
+    for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution; y++)
+    {
+        for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution; x++)
+        {
+            EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
+            uint32_t newX = (1280 * ((((uint64_t)x) * 100000000) / GOP->Mode->Info->HorizontalResolution)) / 100000000;
+            uint32_t newY = (800 * ((((uint64_t)y) * 100000000) / GOP->Mode->Info->VerticalResolution)) / 100000000;
+            uint64_t index = ((799 - newY) * 1280 + newX) * 3;
+            pixel.Blue = fileBuffer[index];
+            pixel.Green = fileBuffer[index + 1];
+            pixel.Red = fileBuffer[index + 2];
+            *buffer++ = pixel;
+        }
+    }
+    FreePool(wallpaperFile);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\test.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t bmpSize = info->FileSize;
+    FreePool(info);
+    uint8_t* bmp = AllocatePool(bmpSize);
+    uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmp);
+    uefi_call_wrapper(file->Close, 1, file);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\test.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t testSize = info->FileSize;
+    FreePool(info);
+    uint8_t* test = AllocatePool(testSize);
+    uefi_call_wrapper(file->Read, 3, file, &testSize, test);
+    uefi_call_wrapper(file->Close, 1, file);
+    UINTN entries;
+    UINTN key;
+    UINTN size;
+    UINT32 version;
+    uint8_t* map = (uint8_t*)LibMemoryMap(&entries, &key, &size, &version);
+    for (UINTN i = 0; i < entries; i++)
+    {
+        EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
+        if (iterator->Type == EfiConventionalMemory)
+        {
+            memory = (void*)iterator->PhysicalStart;
+            allocated = (BOOLEAN*)((iterator->PhysicalStart + iterator->NumberOfPages * EFI_PAGE_SIZE) - 1);
+        }
+    }
+    uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
+    File* newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/test/test.bmp";
+    newFile->size = bmpSize;
+    newFile->data = bmp;
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/test/test.bin";
+    newFile->size = testSize;
+    newFile->data = test;
+    uint64_t gdt[3];
+    gdt[0] = 0;
+    gdt[1] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41) | ((uint64_t)1 << 43) | ((uint64_t)1 << 53);
+    gdt[2] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41);
+    struct {
+        uint16_t length;
+        uint64_t base;
+    } __attribute__((packed)) gdtr;
+    gdtr.length = 23;
+    gdtr.base = (uint64_t)gdt;
+    __asm__ volatile ("lgdt %0" : : "m"(gdtr));
+    __asm__ ("pushq $0x08; leaq completed(%rip), %rax; pushq %rax; retfq");
+    return EFI_SUCCESS;
+}
+
 void* writeFile(const CHAR16* name, uint64_t size)
 {
     File* file = NULL;
@@ -267,101 +360,6 @@ void waitForPit()
     while (waitPit);
 }
 
-EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
-{
-    InitializeLib(ImageHandle, SystemTable);
-    LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
-    uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
-    videoBuffer = AllocateZeroPool(GOP->Mode->FrameBufferSize);
-    blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
-    EFI_LOADED_IMAGE* image = NULL;
-    uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
-    EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
-    EFI_FILE_HANDLE file = NULL;
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"font.psf", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    EFI_FILE_INFO* info = LibFileInfo(file);
-    uint64_t fontSize = info->FileSize;
-    FreePool(info);
-    font = AllocatePool(fontSize);
-    uefi_call_wrapper(file->Read, 3, file, &fontSize, font);
-    uefi_call_wrapper(file->Close, 1, file);
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t wallpaperSize = info->FileSize;
-    FreePool(info);
-    uint8_t* wallpaperFile = AllocatePool(wallpaperSize);
-    uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaperFile);
-    uefi_call_wrapper(file->Close, 1, file);
-    wallpaper = AllocatePool(GOP->Mode->FrameBufferSize);
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
-    uint8_t* fileBuffer = wallpaperFile + 0x36;
-    for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution; y++)
-    {
-        for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution; x++)
-        {
-            EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
-            uint32_t newX = (1280 * ((((uint64_t)x) * 100000000) / GOP->Mode->Info->HorizontalResolution)) / 100000000;
-            uint32_t newY = (800 * ((((uint64_t)y) * 100000000) / GOP->Mode->Info->VerticalResolution)) / 100000000;
-            uint64_t index = ((799 - newY) * 1280 + newX) * 3;
-            pixel.Blue = fileBuffer[index];
-            pixel.Green = fileBuffer[index + 1];
-            pixel.Red = fileBuffer[index + 2];
-            *buffer++ = pixel;
-        }
-    }
-    FreePool(wallpaperFile);
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\test.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t bmpSize = info->FileSize;
-    FreePool(info);
-    uint8_t* bmp = AllocatePool(bmpSize);
-    uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmp);
-    uefi_call_wrapper(file->Close, 1, file);
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\test.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t testSize = info->FileSize;
-    FreePool(info);
-    uint8_t* test = AllocatePool(testSize);
-    uefi_call_wrapper(file->Read, 3, file, &testSize, test);
-    uefi_call_wrapper(file->Close, 1, file);
-    UINTN entries;
-    UINTN key;
-    UINTN size;
-    UINT32 version;
-    uint8_t* map = (uint8_t*)LibMemoryMap(&entries, &key, &size, &version);
-    for (UINTN i = 0; i < entries; i++)
-    {
-        EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
-        if (iterator->Type == EfiConventionalMemory)
-        {
-            memory = (void*)iterator->PhysicalStart;
-            allocated = (BOOLEAN*)((iterator->PhysicalStart + iterator->NumberOfPages * EFI_PAGE_SIZE) - 1);
-        }
-    }
-    uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
-    File* newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/test/test.bmp";
-    newFile->size = bmpSize;
-    newFile->data = bmp;
-    newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/test/test.bin";
-    newFile->size = testSize;
-    newFile->data = test;
-    uint64_t gdt[3];
-    gdt[0] = 0;
-    gdt[1] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41) | ((uint64_t)1 << 43) | ((uint64_t)1 << 53);
-    gdt[2] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41);
-    struct {
-        uint16_t length;
-        uint64_t base;
-    } __attribute__((packed)) gdtr;
-    gdtr.length = 23;
-    gdtr.base = (uint64_t)gdt;
-    __asm__ volatile ("lgdt %0" : : "m"(gdtr));
-    __asm__ ("pushq $0x08; leaq completed(%rip), %rax; pushq %rax; retfq");
-    return EFI_SUCCESS;
-}
-
 void outb(uint16_t port, uint8_t value)
 {
     __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
@@ -463,6 +461,7 @@ void start();
 void completed()
 {
     __asm__ volatile ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
+    videoBuffer = allocate(GOP->Mode->FrameBufferSize);
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
     outb(0x21, 0x20);

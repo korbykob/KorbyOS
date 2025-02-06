@@ -487,7 +487,7 @@ void start()
                 address += GOP->Mode->Info->HorizontalResolution - 16;
             }
         }
-        waitForPit();
+        waitForHpet();
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
     }
 }

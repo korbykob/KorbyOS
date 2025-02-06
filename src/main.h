@@ -27,7 +27,7 @@ typedef struct
     uint64_t sp;
     uint64_t ss;
 } __attribute__((packed)) InterruptFrame;
-BOOLEAN waitPit = FALSE;
+BOOLEAN waitHpet = FALSE;
 BOOLEAN waitKey = FALSE;
 uint8_t mouseCycle = 2;
 uint8_t mouseBytes[3];
@@ -40,6 +40,34 @@ typedef struct {
     uint8_t* data;
 } File;
 File* files = NULL;
+typedef struct
+{
+    char signature[4];
+    uint32_t length;
+    uint8_t revision;
+    uint8_t checksum;
+    char oemId[6];
+    char oemTableID[8];
+    uint32_t oemRevision;
+    uint32_t creatorID;
+    uint32_t creatorRevision;
+} __attribute__ ((packed)) AcpiSdtHeader;
+typedef struct
+{
+    AcpiSdtHeader header;
+    AcpiSdtHeader* entries[];
+} __attribute__ ((packed)) Xsdt;
+typedef struct 
+{
+    AcpiSdtHeader header;
+    uint32_t blockId;
+    uint32_t gas;
+    uint64_t address;
+    uint8_t number;
+    uint16_t minimum;
+    uint8_t protection;
+} __attribute__((packed)) Hpet;
+uint64_t hpetAddress = 0;
 
 void* allocate(uint64_t amount)
 {
@@ -92,6 +120,23 @@ void unallocate(void* pointer, uint64_t amount)
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
+    for (uint64_t i = 0; i < ST->NumberOfTableEntries; i++)
+    {
+        EFI_GUID guid = ACPI_20_TABLE_GUID;
+        if (CompareGuid(&ST->ConfigurationTable[i].VendorGuid, &guid) == 0)
+        {
+            Xsdt* xsdt = *(Xsdt**)(ST->ConfigurationTable[i].VendorTable + 24);
+            for (uint32_t table = 0; table < (xsdt->header.length - sizeof(AcpiSdtHeader)) / sizeof(AcpiSdtHeader*); table++)
+            {
+                if (strncmpa(xsdt->entries[table]->signature, "HPET", 4) == 0)
+                {
+                    hpetAddress = ((Hpet*)xsdt->entries[table])->address;
+                    break;
+                }
+            }
+            break;
+        }
+    }
     LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
     uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
     EFI_LOADED_IMAGE* image = NULL;
@@ -354,10 +399,10 @@ void waitForKey()
     while (waitKey);
 }
 
-void waitForPit()
+void waitForHpet()
 {
-    waitPit = TRUE;
-    while (waitPit);
+    waitHpet = TRUE;
+    while (waitHpet);
 }
 
 void outb(uint16_t port, uint8_t value)
@@ -400,9 +445,9 @@ void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
     }
 }
 
-__attribute__((interrupt)) void pit(InterruptFrame* frame)
+__attribute__((interrupt)) void hpet(InterruptFrame* frame)
 {
-    waitPit = FALSE;
+    waitHpet = FALSE;
     outb(0x20, 0x20);
 }
 
@@ -473,11 +518,11 @@ void completed()
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
     unmaskInterrupt(2);
-    outb(0x43, 0x34);
-    uint16_t divisor = 1193180 / 60;
-    outb(0x40, divisor & 0xFF);
-    outb(0x40, (divisor >> 8) & 0xFF);
-    installInterrupt(0, pit, TRUE);
+    *(uint32_t*)(hpetAddress + 0x10) |= 0b11;
+    *(uint32_t*)(hpetAddress + 0x100) |= 0b1100;
+    *(uint64_t*)(hpetAddress + 0x108) = (1000000000000000ULL / ((*(uint64_t*)hpetAddress >> 32) & 0xFFFFFFFF)) / 60;
+    *(uint64_t*)(hpetAddress + 0xF0) = 0;
+    installInterrupt(0, hpet, TRUE);
     installInterrupt(1, keyboard, TRUE);
     outb(0x64, 0xA8);
     outb(0x64, 0x20);

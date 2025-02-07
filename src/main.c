@@ -35,7 +35,7 @@ typedef struct {
     uint64_t size;
     uint64_t pid;
     void (*start)(uint64_t id);
-    void (*update)();
+    void (*update)(uint64_t frameSkips);
 } Program;
 Program* running = NULL;
 Window* windows = NULL;
@@ -292,7 +292,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         {
                             *destination++ = *source++;
                         }
-                        program->update = program->start + 5;
+                        program->update = (void*)program->start + 5;
                         program->start(pid);
                     }
                 }
@@ -409,6 +409,7 @@ void start()
             }
         }
     }
+    uint64_t frameSkips = 0;
     mouseX = GOP->Mode->Info->HorizontalResolution / 2;
     mouseY = GOP->Mode->Info->VerticalResolution / 2;
     while (TRUE)
@@ -420,7 +421,7 @@ void start()
         Program* program = (Program*)&running;
         while (iterateList((void**)&program))
         {
-            program->update();
+            program->update(frameSkips);
         }
         Window* window = (Window*)&windows;
         while (iterateList((void**)&window))
@@ -487,7 +488,9 @@ void start()
                 address += GOP->Mode->Info->HorizontalResolution - 16;
             }
         }
-        waitForHpet();
+        frameSkips = hpetCounter;
+        hpetCounter = 0;
+        while (hpetCounter == 0);
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
     }
 }

@@ -27,7 +27,7 @@ typedef struct
     uint64_t sp;
     uint64_t ss;
 } __attribute__((packed)) InterruptFrame;
-BOOLEAN waitHpet = FALSE;
+uint64_t hpetCounter = 0;
 BOOLEAN waitKey = FALSE;
 uint8_t mouseCycle = 2;
 uint8_t mouseBytes[3];
@@ -399,12 +399,6 @@ void waitForKey()
     while (waitKey);
 }
 
-void waitForHpet()
-{
-    waitHpet = TRUE;
-    while (waitHpet);
-}
-
 void outb(uint16_t port, uint8_t value)
 {
     __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
@@ -447,7 +441,7 @@ void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
 
 __attribute__((interrupt)) void hpet(InterruptFrame* frame)
 {
-    waitHpet = FALSE;
+    hpetCounter++;
     outb(0x20, 0x20);
 }
 

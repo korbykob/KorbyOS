@@ -23,7 +23,7 @@ void _start(uint64_t pid)
     y = window->height / 2 - 16;
 }
 
-void update()
+void update(uint64_t frameSkips)
 {
     Event* event = (Event*)&window->events;
     Event* lastEvent = event;

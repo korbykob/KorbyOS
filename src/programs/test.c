@@ -69,10 +69,10 @@ void update(uint64_t frameSkips)
         }
         address += window->width - 32;
     }
-    uint8_t speed = 5;
+    uint8_t speed = 5 * frameSkips;
     if (shift)
     {
-        speed = 10;
+        speed = 10 * frameSkips;
     }
     if (w)
     {

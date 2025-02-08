@@ -2,9 +2,15 @@
 
 extern void syscallHandler();
 
-void* memory = NULL;
-BOOLEAN* allocated = NULL;
-uint64_t cleared = 0;
+uint64_t memory = 0;
+typedef struct
+{
+    BOOLEAN present;
+    uint64_t start;
+    uint64_t end;
+} Allocation;
+Allocation* allocated = NULL;
+uint64_t allocations = 0;
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 uint8_t* font = NULL;
@@ -28,7 +34,6 @@ typedef struct
     uint64_t ss;
 } __attribute__((packed)) InterruptFrame;
 uint64_t hpetCounter = 0;
-BOOLEAN waitKey = FALSE;
 uint8_t mouseCycle = 2;
 uint8_t mouseBytes[3];
 BOOLEAN lastLeftClick = FALSE;
@@ -71,50 +76,55 @@ uint64_t hpetAddress = 0;
 
 void* allocate(uint64_t amount)
 {
-    BOOLEAN* test = allocated;
-    uint64_t value = 0;
-    retry:
-    while (*test)
+    uint64_t value = memory;
+    Allocation* allocation = allocated;
+    uint64_t count = 0;
+    while (count != allocations)
     {
-        if (value == cleared)
+        if (allocation->present)
         {
-            cleared = value + amount;
-            goto done;
+            count++;
+            if (value >= allocation->end)
+            {
+                Allocation* test = allocation - 1;
+                while (!test->present && count != allocations)
+                {
+                    count++;
+                    test--;
+                }
+                if (count == allocations || value + amount - 1 < test->start)
+                {
+                    break;
+                }
+                allocation = test;
+            }
+            else
+            {
+                value = allocation->end;
+                allocation--;
+            }
         }
-        test--;
-        value++;
-    }
-    uint64_t size = 0;
-    while (size != amount)
-    {
-        if (value + size == cleared)
+        else
         {
-            cleared = value + amount;
-            goto done;
+            allocation--;
         }
-        if (*test)
-        {
-            goto retry;
-        }
-        test--;
-        size++;
     }
-    done:
-    test = allocated - value;
-    for (uint64_t i = 0; i < amount; i++)
-    {
-        *test-- = TRUE;
-    }
-    return memory + value;
+    allocation->present = TRUE;
+    allocation->start = value;
+    allocation->end = value + amount;
+    allocations++;
+    return (void*)value;
 }
 
-void unallocate(void* pointer, uint64_t amount)
+void unallocate(void* pointer)
 {
-    BOOLEAN* room = allocated - (pointer - memory);
-    for (uint64_t i = 0; i < amount; i++)
+    Allocation* test = allocated;
+    while (!test->present || test->start != (uint64_t)pointer)
     {
-        *room-- = FALSE;
+        test--;
     }
+    test->present = FALSE;
+    allocations--;
 }
 
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
@@ -199,8 +209,9 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
         if (iterator->Type == EfiConventionalMemory)
         {
-            memory = (void*)iterator->PhysicalStart;
-            allocated = (BOOLEAN*)((iterator->PhysicalStart + iterator->NumberOfPages * EFI_PAGE_SIZE) - 1);
+            memory = iterator->PhysicalStart;
+            allocated = (Allocation*)((iterator->PhysicalStart + iterator->NumberOfPages * EFI_PAGE_SIZE) - sizeof(Allocation));
+            allocated->present = FALSE;
         }
     }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
@@ -236,7 +247,7 @@ void* writeFile(const CHAR16* name, uint64_t size)
         if (StrCmp(name, iterator->name) == 0)
         {
             file = iterator;
-            unallocate(file->data, file->size);
+            unallocate(file->data);
             break;
         }
     }
@@ -275,9 +286,9 @@ void deleteFile(const CHAR16* name)
     {
         if (StrCmp(name, file->name) == 0)
         {
-            removeItem((void**)&files, file, sizeof(File));
-            unallocate(file->name, (StrLen(file->name) + 1) * 2);
-            unallocate(file->data, file->size);
+            removeItem((void**)&files, file);
+            unallocate(file->name);
+            unallocate(file->data);
             break;
         }
     }
@@ -391,12 +402,6 @@ void drawImage(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_GRAP
         }
         to += (GOP->Mode->Info->HorizontalResolution - width) / 2;
     }
-}
-
-void waitForKey()
-{
-    waitKey = TRUE;
-    while (waitKey);
 }
 
 void outb(uint16_t port, uint8_t value)

@@ -56,7 +56,7 @@ void update(uint64_t frameSkips)
                 }
                 break;
         }
-        removeItem((void**)&window->events, event, event->size);
+        removeItem((void**)&window->events, event);
         event = lastEvent;
     }
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = window->buffer + y * window->width + x;

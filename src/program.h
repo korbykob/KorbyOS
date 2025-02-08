@@ -12,9 +12,9 @@ void* allocate(uint64_t amount)
     return (void*)result;
 }
 
-void unallocate(void* pointer, uint64_t amount)
+void unallocate(void* pointer)
 {
-    __asm__ volatile ("movq $2, %%rdi; movq %0, %%rsi; movq %1, %%rdx; int $0x80" :  : "r"((uint64_t)pointer), "r"(amount) : "%rdi", "%rsi", "%rdx");
+    __asm__ volatile ("movq $2, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"((uint64_t)pointer) : "%rdi", "%rsi");
 }
 
 Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)

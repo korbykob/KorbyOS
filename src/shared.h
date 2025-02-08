@@ -5,7 +5,6 @@ typedef struct
 {
     void* next;
     uint8_t id;
-    uint8_t size;
 } Event;
 typedef struct
 {
@@ -24,24 +23,20 @@ typedef struct
 } Window;
 typedef struct
 {
-    void* next;
-    uint8_t id;
-    uint8_t size;
+    Event header;
     uint8_t scancode;
     BOOLEAN pressed;
 } KeyEvent;
 typedef struct
 {
-    void* next;
-    uint8_t id;
-    uint8_t size;
+    Event header;
     BOOLEAN left;
     BOOLEAN pressed;
 } ClickEvent;
 
 void* allocate(uint64_t amount);
 
-void unallocate(void* pointer, uint64_t amount);
+void unallocate(void* pointer);
 
 void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
 {
@@ -80,13 +75,13 @@ void* addItem(void** list, uint64_t size)
     return *list;
 }
 
-void removeItem(void** list, void* item, uint64_t size)
+void removeItem(void** list, void* item)
 {
     while (*list != item)
     {
         list = *list;
     }
-    unallocate(*list, size);
+    unallocate(*list);
     *list = **(void***)list;
 }
 

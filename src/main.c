@@ -32,7 +32,6 @@ struct
 } programs[1];
 typedef struct {
     void* next;
-    uint64_t size;
     uint64_t pid;
     void (*start)(uint64_t id);
     void (*update)(uint64_t frameSkips);
@@ -47,6 +46,7 @@ typedef struct
     Window* window;
 } Taskbar;
 Taskbar* taskbar = NULL;
+BOOLEAN wait = FALSE;
 
 void quit(uint64_t pid)
 {
@@ -55,8 +55,8 @@ void quit(uint64_t pid)
     {
         if (program->pid == pid)
         {
-            unallocate(program->start, program->size);
-            removeItem((void**)&running, program, sizeof(Program));
+            unallocate(program->start);
+            removeItem((void**)&running, program);
             break;
         }
     }
@@ -112,7 +112,7 @@ void unallocateWindow(Window* window)
     {
         if (item->window == window)
         {
-            removeItem((void**)&taskbar, item, sizeof(Taskbar));
+            removeItem((void**)&taskbar, item);
             break;
         }
     }
@@ -122,11 +122,11 @@ void unallocateWindow(Window* window)
     }
     if (window->title)
     {
-        unallocate(window->title, (StrLen(window->title) + 1) * 2);
+        unallocate(window->title);
     }
-    unallocate(window->icon, 24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    unallocate(window->buffer, window->width * window->height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    removeItem((void**)&windows, window, sizeof(Window));
+    unallocate(window->icon);
+    unallocate(window->buffer);
+    removeItem((void**)&windows, window);
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4)
@@ -140,7 +140,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return (uint64_t)allocate(arg1);
             break;
         case 2:
-            unallocate((void*)arg1, arg2);
+            unallocate((void*)arg1);
             return 0;
             break;
         case 3:
@@ -176,10 +176,13 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
     if (focus)
     {
         KeyEvent* event = addItem((void**)&focus->events, sizeof(KeyEvent));
-        event->id = 1;
-        event->size = sizeof(KeyEvent);
+        event->header.id = 1;
         event->scancode = scancode;
         event->pressed = pressed;
+    }
+    if (pressed && scancode == 57)
+    {
+        wait = FALSE;
     }
 }
 
@@ -283,7 +286,6 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                             }
                         }
                         Program* program = addItem((void**)&running, sizeof(Program));
-                        program->size = programs[i].size;
                         program->pid = pid;
                         program->start = allocate(programs[i].size);
                         uint8_t* source = programs[i].data;
@@ -320,8 +322,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         if (focus == newWindows[i])
                         {
                             ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
-                            event->id = 2;
-                            event->size = sizeof(ClickEvent);
+                            event->header.id = 2;
                             event->left = left;
                             event->pressed = pressed;
                         }
@@ -338,8 +339,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     if (focus == newWindows[i])
                     {
                         ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
-                        event->id = 2;
-                        event->size = sizeof(ClickEvent);
+                        event->header.id = 2;
                         event->left = left;
                         event->pressed = pressed;
                     }
@@ -356,7 +356,6 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     {
                         Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
                         event->id = 0;
-                        event->size = sizeof(Event);
                         break;
                     }
                     else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
@@ -381,7 +380,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                 }
             }
         }
-        unallocate(newWindows, length * 8);
+        unallocate(newWindows);
     }
     if (left && !pressed)
     {

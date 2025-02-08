@@ -18,10 +18,6 @@ uint8_t mouseIcon[] = {
     02,02,02,02,02,02,02,02,02,02,02,02,02,00,02,02,
     02,02,02,02,02,02,02,02,02,02,02,02,02,02,02,02,
 };
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL red = { 0, 0, 255 };
 int64_t mouseX = 0;
 int64_t mouseY = 0;
 struct
@@ -408,6 +404,7 @@ void start()
             }
         }
     }
+    initGraphics(videoBuffer, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     uint64_t frameSkips = 0;
     mouseX = GOP->Mode->Info->HorizontalResolution / 2;
     mouseY = GOP->Mode->Info->VerticalResolution / 2;
@@ -415,7 +412,7 @@ void start()
     {
         if (!focus || !focus->fullscreen)
         {
-            blit(wallpaper, videoBuffer);
+            blit(wallpaper, videoBuffer, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution);
         }
         Program* program = (Program*)&running;
         while (iterateList((void**)&program))
@@ -429,7 +426,7 @@ void start()
             {
                 if (window->fullscreen)
                 {
-                    blit(window->buffer, videoBuffer);
+                    blit(window->buffer, videoBuffer, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution);
                 }
                 else
                 {
@@ -490,6 +487,6 @@ void start()
         frameSkips = hpetCounter;
         hpetCounter = 0;
         while (hpetCounter == 0);
-        blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase);
+        blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution);
     }
 }

@@ -1,6 +1,7 @@
 #include "../program.h"
 
 uint64_t id = 0;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL* player = NULL;
 Window* window = NULL;
 BOOLEAN w = FALSE;
 BOOLEAN a = FALSE;
@@ -13,6 +14,8 @@ int64_t y = 0;
 void _start(uint64_t pid)
 {
     id = pid;
+    player = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    readBitmap(readFile(L"programs/test/test.bmp", NULL), player);
     window = allocateWindow(640, 360, L"Game", L"programs/test/test.bmp");
     initGraphics(window->buffer, window->width, readFile(L"fonts/font.psf", NULL));
     drawRectangle(0, 0, window->width, window->height, black);
@@ -30,6 +33,7 @@ void update(uint64_t frameSkips)
         {
             case 0:
                 unallocateWindow(window);
+                unallocate(player);
                 quit(id);
                 break;
             case 1:
@@ -56,7 +60,7 @@ void update(uint64_t frameSkips)
         removeItem((void**)&window->events, event);
         event = lastEvent;
     }
-    drawRectangle(x, y, 32, 32, black);
+    drawRectangle(x, y, 24, 24, black);
     uint8_t speed = 5 * frameSkips;
     if (shift)
     {
@@ -81,18 +85,18 @@ void update(uint64_t frameSkips)
     if (s)
     {
         y += speed;
-        if (y > window->height - 32)
+        if (y > window->height - 24)
         {
-            y = window->height - 32;
+            y = window->height - 24;
         }
     }
     if (d)
     {
         x += speed;
-        if (x > window->width - 32)
+        if (x > window->width - 24)
         {
-            x = window->width - 32;
+            x = window->width - 24;
         }
     }
-    drawRectangle(x, y, 32, 32, white);
+    drawImage(x, y, 24, 24, player);
 }

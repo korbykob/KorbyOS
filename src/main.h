@@ -12,7 +12,6 @@ typedef struct
 Allocation* allocated = NULL;
 uint64_t allocations = 0;
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
@@ -398,7 +397,6 @@ void start();
 void completed()
 {
     __asm__ volatile ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
-    videoBuffer = allocate(GOP->Mode->FrameBufferSize);
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
     outb(0x21, 0x20);

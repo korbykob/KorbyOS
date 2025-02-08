@@ -404,6 +404,7 @@ void start()
             }
         }
     }
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = allocate(GOP->Mode->FrameBufferSize);
     initGraphics(videoBuffer, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     uint64_t frameSkips = 0;
     mouseX = GOP->Mode->Info->HorizontalResolution / 2;

@@ -33,6 +33,12 @@ typedef struct
     BOOLEAN left;
     BOOLEAN pressed;
 } ClickEvent;
+typedef struct
+{
+    Event header;
+    uint32_t x;
+    uint32_t y;
+} MouseEvent;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* graphicsBuffer = NULL;
 uint32_t graphicsPitch = 0;
 uint8_t* graphicsFont = NULL;

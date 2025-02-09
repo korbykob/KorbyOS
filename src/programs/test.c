@@ -1,26 +1,26 @@
 #include "../program.h"
 
-uint64_t id = 0;
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL* player = NULL;
 Window* window = NULL;
-BOOLEAN w = FALSE;
-BOOLEAN a = FALSE;
-BOOLEAN s = FALSE;
-BOOLEAN d = FALSE;
-BOOLEAN shift = FALSE;
-int64_t x = 0;
-int64_t y = 0;
+uint64_t id = 0;
+uint32_t x = 0;
+uint32_t y = 0;
+BOOLEAN pressed = FALSE;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = NULL;
 
 void _start(uint64_t pid)
 {
     id = pid;
-    player = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    readBitmap(readFile(L"programs/test/test.bmp", NULL), player);
     window = allocateWindow(640, 360, L"Game", L"programs/test/test.bmp");
-    initGraphics(window->buffer, window->width, readFile(L"fonts/font.psf", NULL));
-    drawRectangle(0, 0, window->width, window->height, black);
-    x = window->width / 2 - 16;
-    y = window->height / 2 - 16;
+    window->hideMouse = TRUE;
+    x = 0;
+    y = 0;
+    pressed = FALSE;
+    buffer = allocate(window->width * window->height * 4);
+    uint64_t* destination = (uint64_t*)buffer;
+    for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
+    {
+        *destination++ = 0;
+    }
 }
 
 void update(uint64_t frameSkips)
@@ -33,70 +33,40 @@ void update(uint64_t frameSkips)
         {
             case 0:
                 unallocateWindow(window);
-                unallocate(player);
+                unallocate(buffer);
                 quit(id);
                 break;
-            case 1:
-                switch (((KeyEvent*)event)->scancode)
+            case 2:
+                if (((ClickEvent*)event)->left)
                 {
-                    case 17:
-                        w = ((KeyEvent*)event)->pressed;
-                        break;
-                    case 30:
-                        a = ((KeyEvent*)event)->pressed;
-                        break;
-                    case 31:
-                        s = ((KeyEvent*)event)->pressed;
-                        break;
-                    case 32:
-                        d = ((KeyEvent*)event)->pressed;
-                        break;
-                    case 42:
-                        shift = ((KeyEvent*)event)->pressed;
-                        break;
+                    pressed = ((ClickEvent*)event)->pressed;
                 }
+                break;
+            case 3:
+                if (pressed)
+                {
+                    while (x != ((MouseEvent*)event)->x || y != ((MouseEvent*)event)->y)
+                    {
+                        int64_t differenceX = ((MouseEvent*)event)->x - (int64_t)x;
+                        int64_t differenceY = ((MouseEvent*)event)->y - (int64_t)y;
+                        if (differenceX != 0)
+                        {
+                            x += differenceX > 0 ? 1 : -1;
+                        }
+                        if (differenceY != 0)
+                        {
+                            y += differenceY > 0 ? 1 : -1;
+                        }
+                        buffer[y * window->width + x] = white;
+                    }
+                }
+                x = ((MouseEvent*)event)->x;
+                y = ((MouseEvent*)event)->y;
                 break;
         }
         removeItem((void**)&window->events, event);
         event = lastEvent;
     }
-    drawRectangle(x, y, 24, 24, black);
-    uint8_t speed = 5 * frameSkips;
-    if (shift)
-    {
-        speed = 10 * frameSkips;
-    }
-    if (w)
-    {
-        y -= speed;
-        if (y < 0)
-        {
-            y = 0;
-        }
-    }
-    if (a)
-    {
-        x -= speed;
-        if (x < 0)
-        {
-            x = 0;
-        }
-    }
-    if (s)
-    {
-        y += speed;
-        if (y > window->height - 24)
-        {
-            y = window->height - 24;
-        }
-    }
-    if (d)
-    {
-        x += speed;
-        if (x > window->width - 24)
-        {
-            x = window->width - 24;
-        }
-    }
-    drawImage(x, y, 24, 24, player);
+    blit(buffer, window->buffer, window->width, window->height);
+    window->buffer[y * window->width + x] = white;
 }

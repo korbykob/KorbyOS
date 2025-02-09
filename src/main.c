@@ -223,6 +223,23 @@ void mouseMove(int16_t x, int16_t y)
             dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 89;
         }
     }
+    if (focus)
+    {
+        if (focus->fullscreen)
+        {
+            MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+            event->header.id = 3;
+            event->x = mouseX;
+            event->y = mouseY;
+        }
+        else if (mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
+        {
+            MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+            event->header.id = 3;
+            event->x = mouseX - focus->x - 10;
+            event->y = mouseY - focus->y - 47;
+        }
+    }
 }
 
 void mouseClick(BOOLEAN left, BOOLEAN pressed)

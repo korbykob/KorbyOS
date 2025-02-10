@@ -10,11 +10,8 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = NULL;
 void _start(uint64_t pid)
 {
     id = pid;
-    window = allocateWindow(640, 360, L"Game", L"programs/test/test.bmp");
+    window = allocateWindow(1200, 600, L"Game", L"programs/test/test.bmp");
     window->hideMouse = TRUE;
-    x = 0;
-    y = 0;
-    pressed = FALSE;
     buffer = allocate(window->width * window->height * 4);
     uint64_t* destination = (uint64_t*)buffer;
     for (uint64_t i = 0; i < (window->width * window->height) / 2; i++)
@@ -40,6 +37,10 @@ void update(uint64_t frameSkips)
                 if (((ClickEvent*)event)->left)
                 {
                     pressed = ((ClickEvent*)event)->pressed;
+                    if (pressed)
+                    {
+                        buffer[y * window->width + x] = white;
+                    }
                 }
                 break;
             case 3:

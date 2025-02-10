@@ -336,7 +336,7 @@ void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
     }
 }
 
-__attribute__((interrupt)) void hpet(InterruptFrame* frame)
+__attribute__((interrupt, target("general-regs-only"))) void hpet(InterruptFrame* frame)
 {
     hpetCounter++;
     outb(0x20, 0x20);
@@ -344,7 +344,7 @@ __attribute__((interrupt)) void hpet(InterruptFrame* frame)
 
 void keyPress(uint8_t scancode, BOOLEAN pressed);
 
-__attribute__((interrupt)) void keyboard(InterruptFrame* frame)
+__attribute__((interrupt, target("general-regs-only"))) void keyboard(InterruptFrame* frame)
 {
     uint8_t scancode = inb(0x60);
     BOOLEAN unpressed = scancode & 0b10000000;
@@ -360,7 +360,7 @@ void mouseMove(int16_t x, int16_t y);
 
 void mouseClick(BOOLEAN left, BOOLEAN pressed);
 
-__attribute__((interrupt)) void mouse(InterruptFrame* frame)
+__attribute__((interrupt, target("general-regs-only"))) void mouse(InterruptFrame* frame)
 {
     mouseBytes[mouseCycle] = inb(0x60);
     mouseCycle++;

@@ -166,8 +166,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution; x++)
         {
             EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
-            uint32_t newX = (1280 * (((uint64_t)x * 100000000) / GOP->Mode->Info->HorizontalResolution)) / 100000000;
-            uint32_t newY = (800 * (((uint64_t)y * 100000000) / GOP->Mode->Info->VerticalResolution)) / 100000000;
+            uint32_t newX = 1280 * (x / (float)GOP->Mode->Info->HorizontalResolution);
+            uint32_t newY = 800 * (y / (float)GOP->Mode->Info->VerticalResolution);
             uint64_t index = ((799 - newY) * 1280 + newX) * 3;
             pixel.Blue = fileBuffer[index];
             pixel.Green = fileBuffer[index + 1];

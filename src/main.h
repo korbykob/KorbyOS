@@ -167,14 +167,13 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     {
         for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution; x++)
         {
-            EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
             uint32_t newX = width * (x / (float)GOP->Mode->Info->HorizontalResolution);
             uint32_t newY = height * (y / (float)GOP->Mode->Info->VerticalResolution);
             uint64_t index = ((height - newY - 1) * width + newX) * 3;
-            pixel.Blue = fileBuffer[index];
-            pixel.Green = fileBuffer[index + 1];
-            pixel.Red = fileBuffer[index + 2];
-            *buffer++ = pixel;
+            buffer->Blue = fileBuffer[index];
+            buffer->Green = fileBuffer[index + 1];
+            buffer->Red = fileBuffer[index + 2];
+            buffer++;
         }
     }
     FreePool(wallpaperFile);

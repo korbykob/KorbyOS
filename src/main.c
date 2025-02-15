@@ -20,12 +20,15 @@ uint8_t mouseIcon[] = {
 };
 int64_t mouseX = 0;
 int64_t mouseY = 0;
-struct
+typedef struct
 {
+    void* next;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24*24];
     uint64_t size;
     uint8_t* data;
-} programs[1];
+} ProgramData;
+ProgramData* programs = NULL;
+uint8_t programCount = 0;
 typedef struct {
     void* next;
     uint64_t pid;
@@ -248,10 +251,10 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
     {
         if (left && pressed)
         {
-            if (mouseX >= 32)
+            if (mouseX >= 5 + 32 * programCount)
             {
                 Taskbar* item = (Taskbar*)&taskbar;
-                uint64_t i = 1;
+                uint64_t i = programCount;
                 while (iterateList((void**)&item))
                 {
                     uint64_t x = 5 + i * 32;
@@ -283,7 +286,9 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
             }
             else
             {
-                for (uint8_t i = 0; i < 1; i++)
+                ProgramData* item = (ProgramData*)&programs;
+                uint64_t i = 0;
+                while (iterateList((void**)&item))
                 {
                     uint64_t x = 4 + i * 32;
                     if (mouseX >= x && mouseX < x + 24)
@@ -300,16 +305,17 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         }
                         Program* program = addItem((void**)&running, sizeof(Program));
                         program->pid = pid;
-                        program->start = allocate(programs[i].size);
-                        uint8_t* source = programs[i].data;
+                        program->start = allocate(item->size);
+                        uint8_t* source = item->data;
                         uint8_t* destination = (uint8_t*)program->start;
-                        for (uint64_t i2 = 0; i2 < programs[i].size; i2++)
+                        for (uint64_t i2 = 0; i2 < item->size; i2++)
                         {
                             *destination++ = *source++;
                         }
                         program->update = (void*)program->start + 5;
                         program->start(pid);
                     }
+                    i++;
                 }
             }
         }
@@ -403,21 +409,22 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 
 void start()
 {
-    uint8_t program = 0;
     File* file = (File*)&files;
+    ProgramData* current = NULL;
     while (iterateList((void**)&file))
     {
         if (StrnCmp(file->name, L"programs/", 9) == 0)
         {
-            if (StrCmp(file->name + StrLen(file->name) - 3, L"bmp") == 0)
+            if (StrCmp(file->name + StrLen(file->name) - 4, L".bin") == 0)
             {
-                readBitmap(file->data, programs[program].icon);
+                current = addItem((void**)&programs, sizeof(ProgramData));
+                current->size = file->size;
+                current->data = file->data;
             }
-            else if (StrCmp(file->name + StrLen(file->name) - 3, L"bin") == 0)
+            else if (StrCmp(file->name + StrLen(file->name) - 4, L".bmp") == 0)
             {
-                programs[program].size = file->size;
-                programs[program].data = file->data;
-                program++;
+                readBitmap(file->data, current->icon);
+                programCount++;
             }
         }
     }
@@ -463,13 +470,15 @@ void start()
         if (!focus || !focus->fullscreen)
         {
             drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, grey);
-            for (uint8_t i = 0; i < 1; i++)
+            ProgramData* programData = (ProgramData*)&programs;
+            uint64_t i = 0;
+            while (iterateList((void**)&programData))
             {
-                drawImage(4 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programs[i].icon);
+                drawImage(4 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, programData->icon);
             }
-            drawRectangle(1 * 32 - 1, GOP->Mode->Info->VerticalResolution - 28, 2, 24, black);
+            drawRectangle(programCount * 32 - 1, GOP->Mode->Info->VerticalResolution - 28, 2, 24, black);
             Taskbar* item = (Taskbar*)&taskbar;
-            uint64_t i = 1;
+            i = programCount;
             while (iterateList((void**)&item))
             {
                 if (focus == item->window)

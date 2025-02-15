@@ -151,7 +151,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
     EFI_FILE_HANDLE file = NULL;
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpapers\\wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     EFI_FILE_INFO* info = LibFileInfo(file);
     uint64_t wallpaperSize = info->FileSize;
     FreePool(info);
@@ -161,14 +161,16 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     wallpaper = AllocatePool(GOP->Mode->FrameBufferSize);
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
     uint8_t* fileBuffer = wallpaperFile + 0x36;
+    int32_t width = *(int32_t*)(wallpaperFile + 0x12);
+    int32_t height = *(int32_t*)(wallpaperFile + 0x16);
     for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution; y++)
     {
         for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution; x++)
         {
             EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
-            uint32_t newX = 1280 * (x / (float)GOP->Mode->Info->HorizontalResolution);
-            uint32_t newY = 800 * (y / (float)GOP->Mode->Info->VerticalResolution);
-            uint64_t index = ((799 - newY) * 1280 + newX) * 3;
+            uint32_t newX = width * (x / (float)GOP->Mode->Info->HorizontalResolution);
+            uint32_t newY = height * (y / (float)GOP->Mode->Info->VerticalResolution);
+            uint64_t index = ((height - newY - 1) * width + newX) * 3;
             pixel.Blue = fileBuffer[index];
             pixel.Green = fileBuffer[index + 1];
             pixel.Red = fileBuffer[index + 2];

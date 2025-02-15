@@ -249,7 +249,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 {
     if ((!focus || !focus->fullscreen) && mouseY >= GOP->Mode->Info->VerticalResolution - 28 && mouseY < GOP->Mode->Info->VerticalResolution - 4)
     {
-        if (left && pressed)
+        if (pressed)
         {
             if (mouseX >= 5 + 32 * programCount)
             {
@@ -260,31 +260,39 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     uint64_t x = 5 + i * 32;
                     if (mouseX >= x && mouseX < x + 24)
                     {
-                        if (item->window->minimised)
+                        if (left)
                         {
-                            item->window->minimised = FALSE;
-                            focus = item->window;
-                            moveItemEnd((void**)&windows, item->window);
-                        }
-                        else
-                        {
-                            if (focus == item->window)
+                            if (item->window->minimised)
                             {
-                                focus = NULL;
-                                item->window->minimised = TRUE;
-                            }
-                            else
-                            {
+                                item->window->minimised = FALSE;
                                 focus = item->window;
                                 moveItemEnd((void**)&windows, item->window);
                             }
+                            else
+                            {
+                                if (focus == item->window)
+                                {
+                                    focus = NULL;
+                                    item->window->minimised = TRUE;
+                                }
+                                else
+                                {
+                                    focus = item->window;
+                                    moveItemEnd((void**)&windows, item->window);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Event* event = addItem((void**)&item->window->events, sizeof(Event));
+                            event->id = 0;
                         }
                         break;
                     }
                     i++;
                 }
             }
-            else
+            else if (left)
             {
                 ProgramData* item = (ProgramData*)&programs;
                 uint64_t i = 0;

@@ -10,7 +10,7 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = NULL;
 void _start(uint64_t pid)
 {
     id = pid;
-    window = allocateWindow(640, 360, L"Game", L"programs/test/test.bmp");
+    window = allocateFullscreenWindow(L"programs/test/test.bmp");
     window->hideMouse = TRUE;
     buffer = allocate(window->width * window->height * 4);
     uint64_t* destination = (uint64_t*)buffer;

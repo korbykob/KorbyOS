@@ -162,16 +162,16 @@ void update(uint64_t frameSkips)
     }
     if (q)
     {
-        direction -= 3 * frameSkips;
+        direction -= 0.05f * frameSkips;
     }
     if (e)
     {
-        direction += 3 * frameSkips;
+        direction += 0.05f * frameSkips;
     }
-    uint8_t speed = 3;
+    float speed = 0.05f;
     if (shift)
     {
-        speed = 6;
+        speed = 0.1f;
     }
     if (w)
     {
@@ -227,8 +227,8 @@ void update(uint64_t frameSkips)
             playerY = newY;
         }
     }
-    uint32_t halfHeight = window->height / 2;
-    for (uint32_t y = 0; y < window->height; y++)
+    int halfHeight = window->height / 2;
+    for (int y = 0; y < window->height; y++)
     {
         uint8_t brightness = 0;
         if (y < halfHeight)
@@ -248,33 +248,34 @@ void update(uint64_t frameSkips)
             window->buffer[y * window->width + x] = pixel;
         }
     }
-    uint32_t halfWidth = window->width / 2;
+    int32_t halfWidth = window->width / 2;
     float distribution = halfWidth / tan(1.57f / 2.0f);
-    for (uint32_t y = 0; y < window->height; y++)
+    for (int64_t x = 0; x < window->width; x++)
     {
         float raycastX = playerX;
         float raycastY = playerY;
-        float raycastDirection = direction + atan((y - halfWidth) / distribution);
-        while (!map[(int)(raycastY)][(int)(raycastX)])
+        float raycastDirection = direction + atan((x - halfWidth) / distribution);
+        while (!map[(uint8_t)(raycastY)][(uint8_t)(raycastX)])
         {
             raycastX += cos(raycastDirection) * 0.01f;
             raycastY += sin(raycastDirection) * 0.01f;
         }
         float distance = sqrt((raycastX - playerX) * (raycastX - playerX) + (raycastY - playerY) * (raycastY - playerY));
-        int wallHeight = (int)(distribution * 2 / (distance * cos(raycastDirection - direction)));
-        int halfWallHeight = wallHeight / 2;
-        float brightness = max(min(1.5f - distance / 7.5f, 1.0f), 0.0f);
-        for (int x = 0; x < wallHeight; x++)
+        uint64_t wallHeight = (uint64_t)(distribution * 2 / (distance * cos(raycastDirection - direction)));
+        uint64_t halfWallHeight = wallHeight / 2;
+        float uncappedBrightness = 1.5f - distance / 7.5f;
+        float brightness = max(min(uncappedBrightness, 1.0f), 0.0f);
+        for (uint64_t y = 0; y < wallHeight; y++)
         {
-            int yPixel = halfHeight - halfWallHeight + x;
+            uint32_t yPixel = halfHeight - halfWallHeight + y;
             if (yPixel >= 0 && yPixel < window->height)
             {
-                unsigned char* colour = texture[(int)((float)(x) / wallHeight * 64)][(int)((int)((raycastX + raycastY) * 20.0f) % 40 / 40.0f * 64)];
+                uint8_t* colour = texture[(uint8_t)((float)(y) / wallHeight * 64)][(uint8_t)((int64_t)((raycastX + raycastY) * 20.0f) % 40 / 40.0f * 64)];
                 EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
                 pixel.Red = brightness * colour[2];
                 pixel.Green = brightness * colour[1];
                 pixel.Blue = brightness * colour[0];
-                window->buffer[yPixel * window->width + y] = pixel;
+                window->buffer[yPixel * window->width + x] = pixel;
             }
         }
     }

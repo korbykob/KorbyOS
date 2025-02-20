@@ -238,44 +238,69 @@ void drawString(const CHAR16* string, uint32_t x, uint32_t y, EFI_GRAPHICS_OUTPU
     }
 }
 
-const double PI=3.1415926535897932384650288;
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
 
-double sin(double x){
-  double sign=1;
-  if (x<0){
-    sign=-1.0;
-    x=-x;
-  }
-  if (x>360) x -= (int)(x/360)*360;
-  x*=PI/180.0;
-  double res=0;
-  double term=x;
-  int k=1;
-  while (res+term!=res){
-    res+=term;
-    k+=2;
-    term*=-x*x/k/(k-1);
-  }
-
-  return sign*res;
+double sqrt(double x) {
+    if (x < 0) return -1; // Error for negative input
+    double guess = x / 2.0;
+    double epsilon = 0.00001; // Precision
+    while ((guess * guess - x) > epsilon || (x - guess * guess) > epsilon) {
+        guess = (guess + x / guess) / 2.0;
+    }
+    return guess;
 }
 
-double cos(double x){
-  if (x<0) x=-x;
-  if (x>360) x -= (int)(x/360)*360;
-  x*=PI/180.0;
-  double res=0;
-  double term=1;
-  int k=0;
-  while (res+term!=res){
-    res+=term;
-    k+=2;
-    term*=-x*x/k/(k-1);
-  }  
-  return res;
+double sin(double x) {
+    double term = x; // First term
+    double sum = x;  // Initialize sum of series
+    int n = 1;
+    double epsilon = 0.00001; // Precision
+
+    while (term > epsilon || -term > epsilon) {
+        term *= -x * x / ((2 * n) * (2 * n + 1));
+        sum += term;
+        n++;
+    }
+    return sum;
 }
 
-#define min(a,b) (((a)<(b))?(a):(b))
-#define max(a,b) (((a)>(b))?(a):(b))
+double cos(double x) {
+    double term = 1; // First term
+    double sum = 1;  // Initialize sum of series
+    int n = 1;
+    double epsilon = 0.00001; // Precision
 
+    while (term > epsilon || -term > epsilon) {
+        term *= -x * x / ((2 * n - 1) * (2 * n));
+        sum += term;
+        n++;
+    }
+    return sum;
+}
 
+double tan(double x) {
+    double sin_x = sin(x);
+    double cos_x = cos(x);
+    if (cos_x == 0) return -1; // Error for undefined tan
+    return sin_x / cos_x;
+}
+
+double atan(double x) {
+    if (x > 1 || x < -1) {
+        // Use atan(x) = pi/2 - atan(1/x) for x > 1
+        return (x > 0 ? 1 : -1) * (3.14159265358979323846 / 2 - atan(1 / x));
+    }
+
+    double term = x; // First term
+    double sum = x;  // Initialize sum of series
+    int n = 1;
+    double epsilon = 0.00001; // Precision
+
+    while (term > epsilon || -term > epsilon) {
+        term *= -x * x * (2 * n - 1) / (2 * n + 1);
+        sum += term;
+        n++;
+    }
+    return sum;
+}

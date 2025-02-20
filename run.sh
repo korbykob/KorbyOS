@@ -10,5 +10,5 @@ objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -
 nasm -f elf64 src/programs/test.asm -o bin/programs/testasm.o
 gcc -Ignu-efi/inc -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/test.c -o bin/programs/test.o
 ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -o bin/programs/test.bin -Ttext 0x0 --oformat binary bin/programs/testasm.o bin/programs/test.o -lgnuefi -lefi
-uefi-run -s 20 -b OVMF-pure-efi.fd -d -f src/wallpapers/wallpaper.bmp:wallpapers/wallpaper.bmp -f src/fonts/font.psf:fonts/font.psf -f src/programs/test.bmp:programs/test/test.bmp -f bin/programs/test.bin:programs/test/test.bin bin/main.efi -- -enable-kvm -m 16G -cpu host -monitor stdio
+uefi-run -s 20 -b OVMF-pure-efi.fd -d -f src/wallpapers/wallpaper.bmp:wallpapers/wallpaper.bmp -f src/fonts/font.psf:fonts/font.psf -f src/programs/test.bmp:programs/test/test.bmp -f bin/programs/test.bin:programs/test/test.bin -f src/programs/wall.bmp:programs/test/wall.bmp bin/main.efi -- -enable-kvm -m 16G -cpu host -monitor stdio
 echo

@@ -428,11 +428,12 @@ void start()
                 current = addItem((void**)&programs, sizeof(ProgramData));
                 current->size = file->size;
                 current->data = file->data;
+                programCount++;
             }
-            else if (StrCmp(file->name + StrLen(file->name) - 4, L".bmp") == 0)
+            else if (current && StrCmp(file->name + StrLen(file->name) - 4, L".bmp") == 0)
             {
                 readBitmap(file->data, current->icon);
-                programCount++;
+                current = NULL;
             }
         }
     }

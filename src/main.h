@@ -198,6 +198,13 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* bmp = AllocatePool(bmpSize);
     uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmp);
     uefi_call_wrapper(file->Close, 1, file);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\wall.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t wallSize = info->FileSize;
+    FreePool(info);
+    uint8_t* wall = AllocatePool(wallSize);
+    uefi_call_wrapper(file->Read, 3, file, &wallSize, wall);
+    uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;
     UINTN size;
@@ -226,6 +233,10 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     newFile->name = L"programs/test/test.bmp";
     newFile->size = bmpSize;
     newFile->data = bmp;
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/test/wall.bmp";
+    newFile->size = wallSize;
+    newFile->data = wall;
     uint64_t gdt[3];
     gdt[0] = 0;
     gdt[1] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41) | ((uint64_t)1 << 43) | ((uint64_t)1 << 53);

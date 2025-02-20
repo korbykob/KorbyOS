@@ -37,8 +37,6 @@ BOOLEAN map[32][32] = {
     { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* texture = NULL;
-BOOLEAN q = FALSE;
-BOOLEAN e = FALSE;
 BOOLEAN w = FALSE;
 BOOLEAN a = FALSE;
 BOOLEAN s = FALSE;
@@ -54,7 +52,7 @@ void _start(uint64_t pid)
     texture = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(L"programs/test/wall.bmp", NULL), texture);
     window = allocateWindow(640, 360, L"Game", L"programs/test/test.bmp");
-    window->hideMouse = TRUE;
+    window->mouseMode = 2;
 }
 
 void update(uint64_t frameSkips)
@@ -72,12 +70,6 @@ void update(uint64_t frameSkips)
             case 1:
                 switch (((KeyEvent*)event)->scancode)
                 {
-                    case 16:
-                        q = ((KeyEvent*)event)->pressed;
-                        break;
-                    case 18:
-                        e = ((KeyEvent*)event)->pressed;
-                        break;
                     case 17:
                         w = ((KeyEvent*)event)->pressed;
                         break;
@@ -95,25 +87,20 @@ void update(uint64_t frameSkips)
                         break;
                 }
                 break;
+            case 3:
+                direction += ((MouseEvent*)event)->x * 0.002f;
+                if (direction < 0)
+                {
+                    direction += 6.28f;
+                }
+                else if (direction > 6.28f)
+                {
+                    direction -= 6.28f;
+                }
+                break;
         }
         removeItem((void**)&window->events, event);
         event = (Event*)&window->events;
-    }
-    if (q)
-    {
-        direction -= 0.05f * frameSkips;
-        if (direction < 0)
-        {
-            direction += 6.28f;
-        }
-    }
-    if (e)
-    {
-        direction += 0.05f * frameSkips;
-        if (direction > 6.28f)
-        {
-            direction -= 6.28f;
-        }
     }
     float speed = 0.05f;
     if (shift)

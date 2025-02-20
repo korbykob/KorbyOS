@@ -16,7 +16,7 @@ typedef struct
     CHAR16* title;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* icon;
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
-    BOOLEAN hideMouse;
+    uint8_t mouseMode;
     BOOLEAN fullscreen;
     BOOLEAN minimised;
     Event* events;
@@ -36,8 +36,8 @@ typedef struct
 typedef struct
 {
     Event header;
-    uint32_t x;
-    uint32_t y;
+    int64_t x;
+    int64_t y;
 } MouseEvent;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* graphicsBuffer = NULL;
 uint32_t graphicsPitch = 0;
@@ -241,66 +241,69 @@ void drawString(const CHAR16* string, uint32_t x, uint32_t y, EFI_GRAPHICS_OUTPU
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
-double sqrt(double x) {
-    if (x < 0) return -1; // Error for negative input
+double sqrt(double x)
+{
     double guess = x / 2.0;
-    double epsilon = 0.00001; // Precision
-    while ((guess * guess - x) > epsilon || (x - guess * guess) > epsilon) {
+    double epsilon = 0.00001;
+    while ((guess * guess - x) > epsilon || (x - guess * guess) > epsilon)
+    {
         guess = (guess + x / guess) / 2.0;
     }
     return guess;
 }
 
-double sin(double x) {
-    double term = x; // First term
-    double sum = x;  // Initialize sum of series
-    int n = 1;
-    double epsilon = 0.00001; // Precision
-
-    while (term > epsilon || -term > epsilon) {
-        term *= -x * x / ((2 * n) * (2 * n + 1));
+double sin(double x)
+{
+    double term = x;
+    double sum = x;
+    uint64_t i = 1;
+    double epsilon = 0.00001;
+    while (term > epsilon || -term > epsilon)
+    {
+        term *= -x * x / ((2 * i) * (2 * i + 1));
         sum += term;
-        n++;
+        i++;
     }
     return sum;
 }
 
-double cos(double x) {
-    double term = 1; // First term
-    double sum = 1;  // Initialize sum of series
-    int n = 1;
-    double epsilon = 0.00001; // Precision
-
-    while (term > epsilon || -term > epsilon) {
-        term *= -x * x / ((2 * n - 1) * (2 * n));
+double cos(double x)
+{
+    double term = 1;
+    double sum = 1;
+    uint64_t i = 1;
+    double epsilon = 0.00001;
+    while (term > epsilon || -term > epsilon)
+    {
+        term *= -x * x / ((2 * i - 1) * (2 * i));
         sum += term;
-        n++;
+        i++;
     }
     return sum;
 }
 
-double tan(double x) {
-    double sin_x = sin(x);
-    double cos_x = cos(x);
-    if (cos_x == 0) return -1; // Error for undefined tan
-    return sin_x / cos_x;
+double tan(double x)
+{
+    double sine = sin(x);
+    double cosine = cos(x);
+    return sine / cosine;
 }
 
-double atan(double x) {
-    if (x > 1 || x < -1) {
-        // Use atan(x) = pi/2 - atan(1/x) for x > 1
+double atan(double x)
+{
+    if (x > 1 || x < -1)
+    {
         return (x > 0 ? 1 : -1) * (3.14159265358979323846 / 2 - atan(1 / x));
     }
-
-    double term = x; // First term
-    double sum = x;  // Initialize sum of series
-    int n = 1;
-    double epsilon = 0.00001; // Precision
-
-    while (term > epsilon || -term > epsilon) {
-        term *= -x * x * (2 * n - 1) / (2 * n + 1);
+    double term = x;
+    double sum = x;
+    uint64_t i = 1;
+    double epsilon = 0.00001;
+    while (term > epsilon || -term > epsilon)
+    {
+        term *= -x * x * (2 * i - 1) / (2 * i + 1);
         sum += term;
-        n++;
+        i++;
     }
     return sum;
 }

@@ -73,7 +73,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, con
     window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(icon, NULL), window->icon);
     window->buffer = allocate(width * height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    window->hideMouse = FALSE;
+    window->mouseMode = 0;
     window->fullscreen = FALSE;
     window->minimised = FALSE;
     window->events = NULL;
@@ -94,7 +94,7 @@ Window* allocateFullscreenWindow(const CHAR16* icon)
     window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(icon, NULL), window->icon);
     window->buffer = allocate(window->width * window->height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    window->hideMouse = FALSE;
+    window->mouseMode = 0;
     window->fullscreen = TRUE;
     window->minimised = FALSE;
     window->events = NULL;
@@ -187,60 +187,70 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
 
 void mouseMove(int16_t x, int16_t y)
 {
-    mouseX += x;
-    if (mouseX < 0)
+    if (focus && focus->mouseMode == 2 && (focus->fullscreen || (mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)))
     {
-        mouseX = 0;
+        MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+        event->header.id = 3;
+        event->x = x;
+        event->y = y;
     }
-    if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
+    else
     {
-        mouseX = GOP->Mode->Info->HorizontalResolution - 16;
-    }
-    mouseY -= y;
-    if (mouseY < 0)
-    {
-        mouseY = 0;
-    }
-    if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
-    {
-        mouseY = GOP->Mode->Info->VerticalResolution - 16;
-    }
-    if (dragging)
-    {
-        dragging->x += x;
-        if (dragging->x < 0)
+        mouseX += x;
+        if (mouseX < 0)
         {
-            dragging->x = 0;
+            mouseX = 0;
         }
-        if (dragging->x > GOP->Mode->Info->HorizontalResolution - dragging->width - 20)
+        if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
         {
-            dragging->x = GOP->Mode->Info->HorizontalResolution - dragging->width - 20;
+            mouseX = GOP->Mode->Info->HorizontalResolution - 16;
         }
-        dragging->y -= y;
-        if (dragging->y < 0)
+        mouseY -= y;
+        if (mouseY < 0)
         {
-            dragging->y = 0;
+            mouseY = 0;
         }
-        if (dragging->y > GOP->Mode->Info->VerticalResolution - dragging->height - 89)
+        if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
         {
-            dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 89;
+            mouseY = GOP->Mode->Info->VerticalResolution - 16;
         }
-    }
-    if (focus)
-    {
-        if (focus->fullscreen)
+        if (dragging)
         {
-            MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
-            event->header.id = 3;
-            event->x = mouseX;
-            event->y = mouseY;
+            dragging->x += x;
+            if (dragging->x < 0)
+            {
+                dragging->x = 0;
+            }
+            if (dragging->x > GOP->Mode->Info->HorizontalResolution - dragging->width - 20)
+            {
+                dragging->x = GOP->Mode->Info->HorizontalResolution - dragging->width - 20;
+            }
+            dragging->y -= y;
+            if (dragging->y < 0)
+            {
+                dragging->y = 0;
+            }
+            if (dragging->y > GOP->Mode->Info->VerticalResolution - dragging->height - 89)
+            {
+                dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 89;
+            }
         }
-        else if (mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
+        if (focus)
         {
-            MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
-            event->header.id = 3;
-            event->x = mouseX - focus->x - 10;
-            event->y = mouseY - focus->y - 47;
+            if (focus->fullscreen)
+            {
+                MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+                event->header.id = 3;
+                event->x = mouseX;
+                event->y = mouseY;
+            }
+            else if (mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
+            {
+                MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+                event->header.id = 3;
+                event->x = mouseX - focus->x - 10;
+                event->y = mouseY - focus->y - 47;
+            }
         }
     }
 }
@@ -502,7 +512,7 @@ void start()
                 i++;
             }
         }
-        if (!focus || !focus->hideMouse || (!focus->fullscreen && (mouseX < focus->x + 10 || mouseX >= focus->x + focus->width + 10 || mouseY < focus->y + 47 || mouseY >= focus->y + 47 + focus->height)))
+        if (!focus || focus->mouseMode == 0 || (!focus->fullscreen && (mouseX < focus->x + 10 || mouseX >= focus->x + focus->width + 10 || mouseY < focus->y + 47 || mouseY >= focus->y + 47 + focus->height)))
         {
             EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = videoBuffer + mouseY * GOP->Mode->Info->HorizontalResolution + mouseX;
             uint8_t* buffer = mouseIcon;

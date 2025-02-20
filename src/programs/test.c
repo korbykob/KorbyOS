@@ -102,10 +102,18 @@ void update(uint64_t frameSkips)
     if (q)
     {
         direction -= 0.05f * frameSkips;
+        if (direction < 0)
+        {
+            direction += 6.28f;
+        }
     }
     if (e)
     {
         direction += 0.05f * frameSkips;
+        if (direction > 6.28f)
+        {
+            direction -= 6.28f;
+        }
     }
     float speed = 0.05f;
     if (shift)

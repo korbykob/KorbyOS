@@ -128,9 +128,51 @@ void unallocate(void* pointer)
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
+    LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
+    uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
+    uefi_call_wrapper(BS->SetWatchdogTimer, 4, 0, 0, 0, NULL);
+    uint32_t selected = 0;
+    EFI_INPUT_KEY pressed;
+    pressed.ScanCode = 1;
+    pressed.UnicodeChar = '\0';
+    while (pressed.UnicodeChar != '\r')
+    {
+        if (pressed.ScanCode == 1 && selected != 0)
+        {
+            selected--;
+        }
+        else if (pressed.ScanCode == 2 && selected != GOP->Mode->MaxMode - 1)
+        {
+            selected++;
+        }
+        if (pressed.ScanCode == 1 || pressed.ScanCode == 2)
+        {
+            uefi_call_wrapper(ST->ConOut->SetCursorPosition, 3, ST->ConOut, 0, 0);
+            Print(L"Use the up and down arrow keys to move.\nPress enter to select and boot using the selected resolution.\n\nPlease select a resolution:\n");
+            for (uint32_t i = 0; i < GOP->Mode->MaxMode; i++)
+            {
+                uint64_t size = 0;
+                EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* info = NULL;
+                uefi_call_wrapper(GOP->QueryMode, 4, GOP, i, &size, &info);
+                Print(L"%dx%d", info->HorizontalResolution, info->VerticalResolution);
+                if (selected == i)
+                {
+                    Print(L" <--");
+                }
+                else
+                {
+                    Print(L"    ");
+                }
+                Print(L"\n");
+            }
+        }
+        WaitForSingleEvent(ST->ConIn->WaitForKey, 0);
+        uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, &pressed);
+    }
+    uefi_call_wrapper(GOP->SetMode, 2, GOP, selected);
+    EFI_GUID guid = ACPI_20_TABLE_GUID;
     for (uint64_t i = 0; i < ST->NumberOfTableEntries; i++)
     {
-        EFI_GUID guid = ACPI_20_TABLE_GUID;
         if (CompareGuid(&ST->ConfigurationTable[i].VendorGuid, &guid) == 0)
         {
             Xsdt* xsdt = *(Xsdt**)(ST->ConfigurationTable[i].VendorTable + 24);
@@ -145,8 +187,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
             break;
         }
     }
-    LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
-    uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
     EFI_LOADED_IMAGE* image = NULL;
     uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);

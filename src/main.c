@@ -47,7 +47,6 @@ typedef struct
     Window* window;
 } Taskbar;
 Taskbar* taskbar = NULL;
-BOOLEAN wait = FALSE;
 
 void quit(uint64_t pid)
 {
@@ -172,6 +171,7 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
 {
     if (pressed && scancode == 91)
     {
+        dragging = NULL;
         focus = NULL;
     }
     if (focus)
@@ -180,10 +180,6 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
         event->header.id = 1;
         event->scancode = scancode;
         event->pressed = pressed;
-    }
-    if (pressed && scancode == 57)
-    {
-        wait = FALSE;
     }
 }
 

@@ -89,7 +89,7 @@ void _start(uint64_t pid)
     window->mouseMode = 2;
 }
 
-void update(uint64_t frameSkips)
+void update(uint64_t ticks)
 {
     Event* event = (Event*)&window->events;
     while (iterateList((void**)&event))
@@ -144,7 +144,7 @@ void update(uint64_t frameSkips)
     }
     if (q)
     {
-        direction -= 0.05f * frameSkips;
+        direction -= 0.003f * ticks;
         if (direction < 0)
         {
             direction += 6.28f;
@@ -152,25 +152,25 @@ void update(uint64_t frameSkips)
     }
     if (e)
     {
-        direction += 0.05f * frameSkips;
+        direction += 0.003f * ticks;
         if (direction > 6.28f)
         {
             direction -= 6.28f;
         }
     }
-    float speed = 0.1f;
+    float speed = 0.01f;
     if (shift)
     {
         speed *= 2;
     }
     if (w)
     {
-        float newX = playerX + cos(direction) * speed * frameSkips;
+        float newX = playerX + cos(direction) * speed * ticks;
         if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
         {
             playerX = newX;
         }
-        float newY = playerY + sin(direction) * speed * frameSkips;
+        float newY = playerY + sin(direction) * speed * ticks;
         if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
         {
             playerY = newY;
@@ -179,12 +179,12 @@ void update(uint64_t frameSkips)
     if (a)
     {
         float moveDirection = direction - 1.57f;
-        float newX = playerX + cos(moveDirection) * speed * frameSkips;
+        float newX = playerX + cos(moveDirection) * speed * ticks;
         if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
         {
             playerX = newX;
         }
-        float newY = playerY + sin(moveDirection) * speed * frameSkips;
+        float newY = playerY + sin(moveDirection) * speed * ticks;
         if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
         {
             playerY = newY;
@@ -192,12 +192,12 @@ void update(uint64_t frameSkips)
     }
     if (s)
     {
-        float newX = playerX - cos(direction) * speed * frameSkips;
+        float newX = playerX - cos(direction) * speed * ticks;
         if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
         {
             playerX = newX;
         }
-        float newY = playerY - sin(direction) * speed * frameSkips;
+        float newY = playerY - sin(direction) * speed * ticks;
         if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
         {
             playerY = newY;
@@ -206,12 +206,12 @@ void update(uint64_t frameSkips)
     if (d)
     {
         float moveDirection = direction + 1.57f;
-        float newX = playerX + cos(moveDirection) * speed * frameSkips;
+        float newX = playerX + cos(moveDirection) * speed * ticks;
         if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
         {
             playerX = newX;
         }
-        float newY = playerY + sin(moveDirection) * speed * frameSkips;
+        float newY = playerY + sin(moveDirection) * speed * ticks;
         if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
         {
             playerY = newY;

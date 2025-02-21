@@ -33,7 +33,7 @@ typedef struct {
     void* next;
     uint64_t pid;
     void (*start)(uint64_t id);
-    void (*update)(uint64_t frameSkips);
+    void (*update)(uint64_t ticks);
 } Program;
 Program* running = NULL;
 Window* windows = NULL;
@@ -458,7 +458,7 @@ void start()
     }
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = allocate(GOP->Mode->FrameBufferSize);
     initGraphics(videoBuffer, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
-    uint64_t frameSkips = 0;
+    uint64_t ticks = 0;
     mouseX = GOP->Mode->Info->HorizontalResolution / 2;
     mouseY = GOP->Mode->Info->VerticalResolution / 2;
     while (TRUE)
@@ -470,7 +470,7 @@ void start()
         Program* program = (Program*)&running;
         while (iterateList((void**)&program))
         {
-            program->update(frameSkips);
+            program->update(ticks);
         }
         Window* window = (Window*)&windows;
         while (iterateList((void**)&window))
@@ -539,9 +539,8 @@ void start()
                 address += GOP->Mode->Info->HorizontalResolution - 16;
             }
         }
-        frameSkips = hpetCounter;
+        ticks = hpetCounter;
         hpetCounter = 0;
-        while (hpetCounter == 0);
         blit(videoBuffer, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution);
     }
 }

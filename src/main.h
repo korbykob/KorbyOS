@@ -456,7 +456,7 @@ void completed()
     unmaskInterrupt(2);
     *(uint32_t*)(hpetAddress + 0x10) |= 0b11;
     *(uint32_t*)(hpetAddress + 0x100) |= 0b1100;
-    *(uint64_t*)(hpetAddress + 0x108) = (1000000000000000ULL / ((*(uint64_t*)hpetAddress >> 32) & 0xFFFFFFFF)) / 60;
+    *(uint64_t*)(hpetAddress + 0x108) = (1000000000000000ULL / ((*(uint64_t*)hpetAddress >> 32) & 0xFFFFFFFF)) / 1000;
     *(uint64_t*)(hpetAddress + 0xF0) = 0;
     installInterrupt(0, hpet, TRUE);
     installInterrupt(1, keyboard, TRUE);

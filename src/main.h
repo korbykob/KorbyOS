@@ -252,7 +252,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         {
             memory = iterator->PhysicalStart;
             allocated = (Allocation*)((iterator->PhysicalStart + iterator->NumberOfPages * EFI_PAGE_SIZE) - sizeof(Allocation));
-            allocated->present = FALSE;
         }
     }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);

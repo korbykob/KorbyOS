@@ -38,6 +38,8 @@ typedef struct {
 Program* running = NULL;
 Window* windows = NULL;
 Window* dragging = NULL;
+int64_t draggingX = 0;
+int64_t draggingY = 0;
 Window* focus = NULL;
 typedef struct
 {
@@ -196,32 +198,35 @@ void mouseMove(int16_t x, int16_t y)
     }
     else
     {
-        mouseX += x;
-        if (mouseX < 0)
+        if (!dragging)
         {
-            mouseX = 0;
+            mouseX += x;
+            if (mouseX < 0)
+            {
+                mouseX = 0;
+            }
+            else if (mouseX > GOP->Mode->Info->HorizontalResolution - 1)
+            {
+                mouseX = GOP->Mode->Info->HorizontalResolution - 1;
+            }
+            mouseY -= y;
+            if (mouseY < 0)
+            {
+                mouseY = 0;
+            }
+            else if (mouseY > GOP->Mode->Info->VerticalResolution - 1)
+            {
+                mouseY = GOP->Mode->Info->VerticalResolution - 1;
+            }
         }
-        if (mouseX > GOP->Mode->Info->HorizontalResolution - 16)
-        {
-            mouseX = GOP->Mode->Info->HorizontalResolution - 16;
-        }
-        mouseY -= y;
-        if (mouseY < 0)
-        {
-            mouseY = 0;
-        }
-        if (mouseY > GOP->Mode->Info->VerticalResolution - 16)
-        {
-            mouseY = GOP->Mode->Info->VerticalResolution - 16;
-        }
-        if (dragging)
+        else
         {
             dragging->x += x;
             if (dragging->x < 0)
             {
                 dragging->x = 0;
             }
-            if (dragging->x > GOP->Mode->Info->HorizontalResolution - dragging->width - 20)
+            else if (dragging->x > GOP->Mode->Info->HorizontalResolution - dragging->width - 20)
             {
                 dragging->x = GOP->Mode->Info->HorizontalResolution - dragging->width - 20;
             }
@@ -230,10 +235,12 @@ void mouseMove(int16_t x, int16_t y)
             {
                 dragging->y = 0;
             }
-            if (dragging->y > GOP->Mode->Info->VerticalResolution - dragging->height - 89)
+            else if (dragging->y > GOP->Mode->Info->VerticalResolution - dragging->height - 89)
             {
                 dragging->y = GOP->Mode->Info->VerticalResolution - dragging->height - 89;
             }
+            mouseX = dragging->x - draggingX;
+            mouseY = dragging->y - draggingY;
         }
         if (focus)
         {
@@ -406,6 +413,8 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     }
                     else if (mouseX >= newWindows[i]->x && mouseX < newWindows[i]->x + newWindows[i]->width + 20 && mouseY >= newWindows[i]->y && mouseY < newWindows[i]->y + 47)
                     {
+                        draggingX = newWindows[i]->x - mouseX;
+                        draggingY = newWindows[i]->y - mouseY;
                         dragging = newWindows[i];
                         if (focus != newWindows[i])
                         {
@@ -520,7 +529,7 @@ void start()
             {
                 for (uint32_t x = 0; x < 16; x++)
                 {
-                    if (*buffer != 2)
+                    if (*buffer != 2 && mouseX + x < GOP->Mode->Info->HorizontalResolution && mouseY + y < GOP->Mode->Info->VerticalResolution)
                     {
                         *address = *buffer ? white : black;
                     }

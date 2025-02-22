@@ -158,7 +158,7 @@ void update(uint64_t ticks)
             direction -= 6.28f;
         }
     }
-    float speed = 0.01f;
+    float speed = 0.005f;
     if (shift)
     {
         speed *= 2;
@@ -245,9 +245,9 @@ void update(uint64_t ticks)
         float raycastX = playerX;
         float raycastY = playerY;
         float raycastDirection = direction + atan((x - halfWidth) / distribution);
-        float raySpeed = 1.0f;
         while (map[(uint8_t)(raycastY)][(uint8_t)(raycastX)] != 1)
         {
+            float raySpeed = 1.0f;
             if (map[(uint8_t)(raycastY)][(uint8_t)(raycastX)] == 2)
             {
                 raySpeed = 0.01f;

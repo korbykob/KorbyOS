@@ -59,6 +59,27 @@ void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
     }
 }
 
+void splitTask(void (*task)(uint64_t id), uint64_t count)
+{
+    for (uint64_t i = 0; i < count - 1; i++)
+    {
+        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)task;
+    }
+    task(0);
+    while (TRUE)
+    {
+        uint64_t done = 0;
+        for (uint64_t i = 0; i < count - 1; i++)
+        {
+            done += *(uint64_t*)(0x5008 + i * 8);
+        }
+        if (done == 0)
+        {
+            break;
+        }
+    }
+}
+
 void readBitmap(uint8_t* bitmap, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)
 {
     uint8_t* fileBuffer = bitmap + 0x36;

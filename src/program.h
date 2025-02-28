@@ -54,3 +54,10 @@ void deleteFile(const CHAR16* name)
 {
     __asm__ volatile ("movq $8, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"((uint64_t)name) : "%rdi", "%rsi");
 }
+
+uint64_t getCores()
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $9, %%rdi; int $0x80; movq %%rax, %0" : "=r"(result) :  : "%rdi");
+    return result;
+}

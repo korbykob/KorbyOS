@@ -163,6 +163,9 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             deleteFile((const CHAR16*)arg1);
             return 0;
             break;
+        case 9:
+            return cpuCount + 1;
+            break;
     }
     return 0;
 }

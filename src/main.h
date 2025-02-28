@@ -2,6 +2,7 @@
 
 extern void syscallHandler();
 
+uint64_t memorySize = 0;
 uint64_t memory = 0;
 typedef struct
 {
@@ -71,6 +72,15 @@ typedef struct
     uint8_t protection;
 } __attribute__((packed)) Hpet;
 uint64_t hpetAddress = 0;
+typedef struct 
+{
+    AcpiSdtHeader header;
+    uint32_t address;
+    uint32_t flags;
+} __attribute__((packed)) Madt;
+uint64_t apicAddress = 0;
+uint64_t cpuCount = 0;
+uint8_t* cpus = NULL;
 
 void* allocate(uint64_t amount)
 {
@@ -176,7 +186,32 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
                 if (strncmpa(xsdt->entries[table]->signature, "HPET", 4) == 0)
                 {
                     hpetAddress = ((Hpet*)xsdt->entries[table])->address;
-                    break;
+                }
+                else if (strncmpa(xsdt->entries[table]->signature, "APIC", 4) == 0)
+                {
+                    apicAddress = ((Madt*)xsdt->entries[table])->address;
+                    uint8_t bsp = *(uint32_t*)(apicAddress + 0x20) >> 24;
+                    uint8_t* record = ((uint8_t*)xsdt->entries[table]) + 44;
+                    while ((uint64_t)record - (uint64_t)xsdt->entries[table] != xsdt->entries[table]->length)
+                    {
+                        if (*record == 0 && *(record + 3) != bsp)
+                        {
+                            cpuCount++;
+                        }
+                        record += *(record + 1);
+                    }
+                    cpus = AllocatePool(cpuCount);
+                    record = ((uint8_t*)xsdt->entries[table]) + 44;
+                    uint64_t cpu = 0;
+                    while ((uint64_t)record - (uint64_t)xsdt->entries[table] != xsdt->entries[table]->length)
+                    {
+                        if (*record == 0 && *(record + 3) != bsp)
+                        {
+                            cpus[cpu] = *(record + 3);
+                            cpu++;
+                        }
+                        record += *(record + 1);
+                    }
                 }
             }
             break;
@@ -186,8 +221,15 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
     EFI_FILE_HANDLE file = NULL;
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpapers\\wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"system\\smp.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     EFI_FILE_INFO* info = LibFileInfo(file);
+    uint64_t smpSize = info->FileSize;
+    FreePool(info);
+    uint8_t* smp = AllocatePool(smpSize);
+    uefi_call_wrapper(file->Read, 3, file, &smpSize, smp);
+    uefi_call_wrapper(file->Close, 1, file);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpapers\\wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
     uint64_t wallpaperSize = info->FileSize;
     FreePool(info);
     uint8_t* wallpaperFile = AllocatePool(wallpaperSize);
@@ -248,14 +290,23 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     for (UINTN i = 0; i < entries; i++)
     {
         EFI_MEMORY_DESCRIPTOR* iterator = (EFI_MEMORY_DESCRIPTOR*)(map + i * size);
-        if (iterator->Type == EfiConventionalMemory)
+        if (iterator->Type == EfiConventionalMemory || iterator->Type == EfiBootServicesCode || iterator->Type == EfiBootServicesData)
         {
-            memory = iterator->PhysicalStart;
-            allocated = (Allocation*)((iterator->PhysicalStart + iterator->NumberOfPages * EFI_PAGE_SIZE) - sizeof(Allocation));
+            uint64_t keySize = iterator->NumberOfPages * EFI_PAGE_SIZE;
+            if (keySize > memorySize)
+            {
+                memorySize = keySize;
+                memory = iterator->PhysicalStart;
+                allocated = (Allocation*)((iterator->PhysicalStart + keySize) - sizeof(Allocation));
+            }
         }
     }
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
     File* newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"system/smp.bin";
+    newFile->size = smpSize;
+    newFile->data = smp;
+    newFile = addItem((void**)&files, sizeof(File));
     newFile->name = L"fonts/font.psf";
     newFile->size = fontSize;
     newFile->data = font;
@@ -272,9 +323,9 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     newFile->size = wallSize;
     newFile->data = wall;
     uint64_t gdt[3];
-    gdt[0] = 0;
-    gdt[1] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41) | ((uint64_t)1 << 43) | ((uint64_t)1 << 53);
-    gdt[2] = ((uint64_t)1 << 44) | ((uint64_t)1 << 47) | ((uint64_t)1 << 41);
+    gdt[0] = 0x0000000000000000;
+    gdt[1] = 0x00209A0000000000;
+    gdt[2] = 0x0000920000000000;
     struct {
         uint16_t length;
         uint64_t base;
@@ -453,13 +504,13 @@ void completed()
     outb(0xA1, 0x01);
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
-    unmaskInterrupt(2);
     *(uint32_t*)(hpetAddress + 0x10) |= 0b11;
     *(uint32_t*)(hpetAddress + 0x100) |= 0b1100;
     *(uint64_t*)(hpetAddress + 0x108) = (1000000000000000ULL / ((*(uint64_t*)hpetAddress >> 32) & 0xFFFFFFFF)) / 1000;
     *(uint64_t*)(hpetAddress + 0xF0) = 0;
     installInterrupt(0, hpet, TRUE);
     installInterrupt(1, keyboard, TRUE);
+    unmaskInterrupt(2);
     outb(0x64, 0xA8);
     outb(0x64, 0x20);
     uint8_t status = inb(0x60) | 2;
@@ -481,6 +532,54 @@ void completed()
     idtr.base = (uint64_t)idt;
     __asm__ volatile ("lidt %0" : : "m"(idtr));
     __asm__ volatile ("sti");
+    uint64_t* PML4T = (uint64_t*)0x1000;
+    for (uint16_t i = 0; i < 512; i++)
+    {
+        PML4T[i] = 0;
+    }
+    uint64_t* PDPT = (uint64_t*)0x2000;
+    for (uint16_t i = 0; i < 512; i++)
+    {
+        PDPT[i] = 0;
+    }
+    PML4T[0] = (uint64_t)PDPT | 0b11;
+    uint64_t* PDT = (uint64_t*)0x3000;
+    for (uint16_t i = 0; i < 512; i++)
+    {
+        PDT[i] = 0;
+    }
+    PDPT[0] = (uint64_t)PDT | 0b11;
+    uint64_t* PT = (uint64_t*)0x4000;
+    uint64_t address = 0;
+    for (uint16_t i = 0; i < 512; i++)
+    {
+        PT[i] = address | 0b11;
+        address += 0x1000;
+    }
+    PDT[0] = (uint64_t)PT | 0b11;
+    uint64_t cr3 = 0;
+    __asm__ volatile ("mov %%cr3, %0" : "=r"(cr3));
+    *(uint64_t*)0x5000 = cr3;
+    uint64_t smpSize = 0;
+    uint8_t* data = readFile(L"system/smp.bin", &smpSize);
+    copyMemory(data, (uint8_t*)0xF000, smpSize);
+    *(uint8_t*)0xEFFF = 0;
+    for (uint64_t i = 0; i < cpuCount; i++)
+    {
+        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)allocate(0x8000) + 0x8000;
+        *(uint32_t*)(apicAddress + 0x310) = cpus[i] << 24;
+        *(uint32_t*)(apicAddress + 0x300) = 0x4500;
+        while (*(uint32_t*)(apicAddress + 0x300) & 0x1000);
+    }
+    for (uint64_t i = 0; i < cpuCount; i++)
+    {
+        *(uint32_t*)(apicAddress + 0x310) = cpus[i] << 24;
+        *(uint32_t*)(apicAddress + 0x300) = 0x460F;
+        while (*(uint32_t*)(apicAddress + 0x300) & 0x1000);
+        hpetCounter = 0;
+        while (hpetCounter < 1);
+    }
+    while (*(uint8_t*)0xEFFF != cpuCount);
     start();
-    while (1);
+    while (TRUE);
 }

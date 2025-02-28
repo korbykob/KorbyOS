@@ -405,6 +405,16 @@ uint8_t inb(uint16_t port)
     return value;
 }
 
+void getTime(uint8_t* hour, uint8_t* minute)
+{
+    outb(0x70, 0x04);
+    *hour = inb(0x71);
+    *hour = (*hour >> 4) * 10 + (*hour & 0x0F);
+    outb(0x70, 0x02);
+    *minute = inb(0x71);
+    *minute = (*minute >> 4) * 10 + (*minute & 0x0F);
+}
+
 void unmaskInterrupt(uint8_t interrupt)
 {
     if (interrupt < 8)

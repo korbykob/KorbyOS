@@ -519,6 +519,30 @@ void start()
                 drawImage(5 + i * 32, GOP->Mode->Info->VerticalResolution - 28, 24, 24, item->window->icon);
                 i++;
             }
+            BOOLEAN half = FALSE;
+            uint8_t hour = 0;
+            uint8_t minute = 0;
+            getTime(&hour, &minute);
+            if (hour >= 12)
+            {
+                half = TRUE;
+                hour -= 12;
+            }
+            drawString(half ? L"PM" : L"AM", GOP->Mode->Info->HorizontalResolution - 37, GOP->Mode->Info->VerticalResolution - 32, white);
+            CHAR16 characters[3];
+            ValueToString(characters, FALSE, minute);
+            drawString(characters, GOP->Mode->Info->HorizontalResolution - ((minute < 10) ? 69 : 85), GOP->Mode->Info->VerticalResolution - 32, white);
+            if (minute < 10)
+            {
+                drawCharacter(L'0', GOP->Mode->Info->HorizontalResolution - 85, GOP->Mode->Info->VerticalResolution - 32, white);
+            }
+            drawCharacter(L':', GOP->Mode->Info->HorizontalResolution - 101, GOP->Mode->Info->VerticalResolution - 32, white);
+            ValueToString(characters, FALSE, hour);
+            drawString(characters, GOP->Mode->Info->HorizontalResolution - ((hour < 10) ? 117 : 133), GOP->Mode->Info->VerticalResolution - 32, white);
+            if (hour < 10)
+            {
+                drawCharacter(L'0', GOP->Mode->Info->HorizontalResolution - 133, GOP->Mode->Info->VerticalResolution - 32, white);
+            }
         }
         if (!focus || focus->mouseMode == 0 || (!focus->fullscreen && (mouseX < focus->x + 10 || mouseX >= focus->x + focus->width + 10 || mouseY < focus->y + 47 || mouseY >= focus->y + 47 + focus->height)))
         {

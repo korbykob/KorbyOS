@@ -89,8 +89,8 @@ void _start(uint64_t pid)
     id = pid;
     cores = getCores();
     texture = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    readBitmap(readFile(L"programs/test/wall.bmp", NULL), texture);
-    window = allocateWindow(640, 360, L"Game", L"programs/test/test.bmp");
+    readBitmap(readFile(L"programs/rendering/wall.bmp", NULL), texture);
+    window = allocateWindow(640, 360, L"Game", L"programs/rendering/program.bmp");
     window->mouseMode = 2;
 }
 

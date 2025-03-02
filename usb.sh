@@ -9,8 +9,8 @@ sudo mkdir -p /mnt/iso/wallpapers
 sudo cp src/wallpapers/wallpaper.bmp /mnt/iso/wallpapers/wallpaper.bmp
 sudo mkdir -p /mnt/iso/fonts
 sudo cp src/fonts/font.psf /mnt/iso/fonts/font.psf
-sudo mkdir -p /mnt/iso/programs/test
-sudo cp src/programs/test/test.bmp /mnt/iso/programs/test/test.bmp
-sudo cp bin/programs/test/test.bin /mnt/iso/programs/test/test.bin
-sudo cp src/programs/test/wall.bmp /mnt/iso/programs/test/wall.bmp
+sudo mkdir -p /mnt/iso/programs/rendering
+sudo cp src/programs/rendering/program.bmp /mnt/iso/programs/rendering/program.bmp
+sudo cp bin/programs/rendering/program.bin /mnt/iso/programs/rendering/program.bin
+sudo cp src/programs/rendering/wall.bmp /mnt/iso/programs/rendering/wall.bmp
 sudo umount /dev/sdc1

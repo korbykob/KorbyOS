@@ -81,15 +81,6 @@ typedef struct
 uint64_t apicAddress = 0;
 uint64_t cpuCount = 0;
 uint8_t* cpus = NULL;
-typedef struct
-{
-	uint64_t address;
-	uint16_t length;
-	uint16_t checksum;
-	uint8_t status;
-	uint8_t errors;
-	uint16_t special;
-} __attribute__((packed)) e1000RxDescriptor;
 
 void* allocate(uint64_t amount)
 {
@@ -426,17 +417,6 @@ void pciWrite(uint32_t bus, uint32_t device, uint32_t function, uint8_t offset, 
     outl(0xCFC, data);
 }
 
-uint16_t readEeprom(uint64_t bar, uint32_t address)
-{
-    *(uint32_t*)(bar + 0x14) = 1 | (address << 2);
-    uint32_t ret = 0;
-    while (!(ret & 0b10))
-    {
-        ret = *(uint32_t*)(bar + 0x14);
-    }
-    return ret >> 16;
-}
-
 void outb(uint16_t port, uint8_t value)
 {
     __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
@@ -548,56 +528,6 @@ void start();
 void completed()
 {
     __asm__ volatile ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
-    BOOLEAN found = FALSE;
-    for (uint16_t bus = 0; bus < 256; bus++)
-    {
-        for (uint8_t device = 0; device < 32; device++)
-        {
-            for (uint8_t function = 0; function < 8; function++)
-            {
-                uint32_t info = pciRead(bus, device, function, 0);
-                if (info == 0x10D38086)
-                {
-                    found = TRUE;
-                    pciWrite(bus, device, function, 0x04, pciRead(bus, device, function, 0x04) | 0b100);
-                    uint64_t bar = pciRead(bus, device, function, 0x10) & 0xFFFFFFF0;
-                    uint8_t mac[6];
-                    uint32_t data = readEeprom(bar, 0);
-                    mac[0] = data;
-                    mac[1] = data >> 8;
-                    data = readEeprom(bar, 1);
-                    mac[2] = data;
-                    mac[3] = data >> 8;
-                    data = readEeprom(bar, 2);
-                    mac[4] = data;
-                    mac[5] = data >> 8;
-                    break;
-                }
-                else if (info == 0x816810EC)
-                {
-                    found = TRUE;
-                    pciWrite(bus, device, function, 0x04, pciRead(bus, device, function, 0x04) | 0b100);
-                    uint64_t bar = pciRead(bus, device, function, 0x10) & 0xFFFFFFFC;
-                    outb(bar + 0x37, 0x10);
-                    while (inb(bar + 0x37) & 0x10);
-                    uint8_t mac[6];
-                    for (uint8_t i = 0; i < 6; i++)
-                    {
-                        mac[i] = inb(bar + i);
-                    }
-                    break;
-                }
-            }
-            if (found)
-            {
-                break;
-            }
-        }
-        if (found)
-        {
-            break;
-        }
-    }
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
     outb(0x21, 0x20);

@@ -241,7 +241,7 @@ void mouseMove(int16_t x, int16_t y)
             mouseX = dragging->x - draggingX;
             mouseY = dragging->y - draggingY;
         }
-        if (focus)
+        if (focus && focus->mouseMode != 2)
         {
             if (focus->fullscreen)
             {

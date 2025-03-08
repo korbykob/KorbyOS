@@ -393,30 +393,6 @@ void deleteFile(const CHAR16* name)
     }
 }
 
-void outl(uint32_t port, uint32_t value)
-{
-    __asm__ volatile ("outl %d0, %w1" : : "a"(value), "Nd"(port) : "memory");
-}
-
-uint32_t inl(uint16_t port)
-{
-    uint32_t value = 0;
-    __asm__ volatile ("inl %w1, %d0" : "=a"(value) : "Nd"(port) : "memory");
-    return value;
-}
-
-uint32_t pciRead(uint32_t bus, uint32_t device, uint32_t function, uint8_t offset)
-{
-    outl(0xCF8, 0x80000000 | (bus << 16) | (device << 11) | (function << 8) | (offset & 0xFC));
-    return inl(0xCFC);
-}
-
-void pciWrite(uint32_t bus, uint32_t device, uint32_t function, uint8_t offset, uint32_t data)
-{
-    outl(0xCF8, 0x80000000 | (bus << 16) | (device << 11) | (function << 8) | (offset & 0xFC));
-    outl(0xCFC, data);
-}
-
 void outb(uint16_t port, uint8_t value)
 {
     __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");

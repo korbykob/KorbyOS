@@ -80,9 +80,11 @@ BOOLEAN shift = FALSE;
 float playerX = 32.0f;
 float playerY = 32.0f;
 float direction = 0.0f;
-int halfHeight = 0;
+uint32_t halfHeight = 0;
 int32_t halfWidth = 0;
 float distribution = 0.0f;
+float enemyX = 48.0f;
+float enemyY = 32.0f;
 
 void _start(uint64_t pid)
 {
@@ -94,11 +96,28 @@ void _start(uint64_t pid)
     window->mouseMode = 2;
 }
 
+void move(float* x, float* y, float moveX, float moveY, float speed)
+{
+    float magnitude = sqrt(moveX * moveX + moveY * moveY);
+    moveX = (moveX / magnitude) * speed;
+    moveY = (moveY / magnitude) * speed;
+    float newX = *x + moveX;
+    if (map[(uint8_t)(*y)][(uint8_t)(newX)] == 0)
+    {
+        *x = newX;
+    }
+    float newY = *y + moveY;
+    if (map[(uint8_t)(newY)][(uint8_t)(*x)] == 0)
+    {
+        *y = newY;
+    }
+}
+
 void coreBackground(uint64_t id)
 {
-    for (int y = 0; y < window->height / cores; y++)
+    for (uint32_t y = 0; y < window->height / cores; y++)
     {
-        int line = y + id * (window->height / cores);
+        uint32_t line = y + id * (window->height / cores);
         uint8_t brightness = 0;
         if (line < halfHeight)
         {
@@ -232,60 +251,34 @@ void update(uint64_t ticks)
     {
         speed *= 2;
     }
+    float moveX = 0.0f;
+    float moveY = 0.0f;
     if (w)
     {
-        float newX = playerX + cos(direction) * speed * ticks;
-        if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
-        {
-            playerX = newX;
-        }
-        float newY = playerY + sin(direction) * speed * ticks;
-        if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
-        {
-            playerY = newY;
-        }
+        moveX += cos(direction);
+        moveY += sin(direction);
     }
     if (a)
     {
         float moveDirection = direction - 1.57f;
-        float newX = playerX + cos(moveDirection) * speed * ticks;
-        if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
-        {
-            playerX = newX;
-        }
-        float newY = playerY + sin(moveDirection) * speed * ticks;
-        if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
-        {
-            playerY = newY;
-        }
+        moveX += cos(moveDirection);
+        moveY += sin(moveDirection);
     }
     if (s)
     {
-        float newX = playerX - cos(direction) * speed * ticks;
-        if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
-        {
-            playerX = newX;
-        }
-        float newY = playerY - sin(direction) * speed * ticks;
-        if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
-        {
-            playerY = newY;
-        }
+        moveX -= cos(direction);
+        moveY -= sin(direction);
     }
     if (d)
     {
         float moveDirection = direction + 1.57f;
-        float newX = playerX + cos(moveDirection) * speed * ticks;
-        if (map[(uint8_t)(playerY)][(uint8_t)(newX)] == 0)
-        {
-            playerX = newX;
-        }
-        float newY = playerY + sin(moveDirection) * speed * ticks;
-        if (map[(uint8_t)(newY)][(uint8_t)(playerX)] == 0)
-        {
-            playerY = newY;
-        }
+        moveX += cos(moveDirection);
+        moveY += sin(moveDirection);
     }
+    move(&playerX, &playerY, moveX, moveY, speed * ticks);
+    map[(uint8_t)(enemyY)][(uint8_t)(enemyX)] = 0;
+    move(&enemyX, &enemyY, playerX - enemyX, playerY - enemyY, 0.005f * ticks);
+    map[(uint8_t)(enemyY)][(uint8_t)(enemyX)] = 1;
     halfHeight = window->height / 2;
     splitTask(coreBackground, cores);
     halfWidth = window->width / 2;

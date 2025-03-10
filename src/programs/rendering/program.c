@@ -253,23 +253,23 @@ void update(uint64_t ticks)
     }
     float moveX = 0.0f;
     float moveY = 0.0f;
-    if (w)
+    if (w && !s)
     {
         moveX += cos(direction);
         moveY += sin(direction);
     }
-    if (a)
+    if (a && !d)
     {
-        float moveDirection = direction - 1.57f;
-        moveX += cos(moveDirection);
-        moveY += sin(moveDirection);
+        float moveDirection = direction + 1.57f;
+        moveX -= cos(moveDirection);
+        moveY -= sin(moveDirection);
     }
-    if (s)
+    if (s && !w)
     {
         moveX -= cos(direction);
         moveY -= sin(direction);
     }
-    if (d)
+    if (d && !a)
     {
         float moveDirection = direction + 1.57f;
         moveX += cos(moveDirection);

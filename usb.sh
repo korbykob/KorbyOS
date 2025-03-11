@@ -14,5 +14,6 @@ sudo mkdir -p staging/programs/rendering
 sudo cp src/programs/rendering/program.bmp staging/programs/rendering/program.bmp
 sudo cp bin/programs/rendering/program.bin staging/programs/rendering/program.bin
 sudo cp src/programs/rendering/wall.bmp staging/programs/rendering/wall.bmp
+sudo cp src/programs/rendering/barrel.bmp staging/programs/rendering/barrel.bmp
 sudo umount staging
 sudo rm -r staging

@@ -282,6 +282,13 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* wall = AllocatePool(wallSize);
     uefi_call_wrapper(file->Read, 3, file, &wallSize, wall);
     uefi_call_wrapper(file->Close, 1, file);
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\barrel.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t barrelSize = info->FileSize;
+    FreePool(info);
+    uint8_t* barrel = AllocatePool(barrelSize);
+    uefi_call_wrapper(file->Read, 3, file, &barrelSize, barrel);
+    uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;
     UINTN size;
@@ -322,6 +329,10 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     newFile->name = L"programs/rendering/wall.bmp";
     newFile->size = wallSize;
     newFile->data = wall;
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/rendering/barrel.bmp";
+    newFile->size = barrelSize;
+    newFile->data = barrel;
     uint64_t gdt[3];
     gdt[0] = 0x0000000000000000;
     gdt[1] = 0x00209A0000000000;

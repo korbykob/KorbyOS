@@ -89,18 +89,20 @@ float enemyY = 32.0f;
 uint32_t spriteSize = 0;
 float enemyOffsetX = 0.0f;
 float enemyOffsetY = 0.0f;
-float halfSpriteSize = 0.0f;
 float brightness = 0.0f;
 float distance = 0.0f;
 float rotatedY = 0.0f;
+uint32_t spriteLeft = 0;
+uint64_t passedTicks = 0;
+uint8_t frame = 0;
 
 void _start()
 {
     cores = getCores();
     texture = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(L"programs/rendering/wall.bmp", NULL), texture);
-    sprite = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    readBitmap(readFile(L"programs/rendering/barrel.bmp", NULL), sprite);
+    sprite = allocate(384 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    readBitmap(readFile(L"programs/rendering/sprite.bmp", NULL), sprite);
     window = allocateWindow(640, 360, L"Game", L"programs/rendering/program.bmp");
     window->mouseMode = 2;
     distances = allocate(window->width * sizeof(float));
@@ -169,7 +171,7 @@ void coreRender(uint64_t id)
         float distance = sqrt((raycastX - playerX) * (raycastX - playerX) + (raycastY - playerY) * (raycastY - playerY));
         distances[line] = distance;
         uint64_t wallHeight = (uint64_t)(distribution * 4 / (distance * cos(raycastDirection - direction)));
-        uint64_t halfWallHeight = wallHeight / 2;
+        uint64_t halfWallHeight = wallHeight / 3;
         float uncappedBrightness = 1.5f - distance / 15.0f;
         float brightness = max(min(uncappedBrightness, 1.0f), 0.0f);
         for (uint64_t y = 0; y < wallHeight; y++)
@@ -192,15 +194,15 @@ void coreSprite(uint64_t id)
     for (uint32_t y = 0; y < spriteSize / cores; y++)
     {
         uint32_t newY = y + id * (spriteSize / cores);
-        uint32_t line = halfHeight + newY - halfSpriteSize;
+        uint32_t line = halfHeight + newY - (spriteSize / 3);
         if (line >= 0 && line < window->height)
         {
             for (uint32_t x = 0; x < spriteSize; x++)
             {
-                uint32_t width = (((enemyOffsetY * cos(direction) - enemyOffsetX * sin(direction)) * (distribution / rotatedY) + halfWidth) - halfSpriteSize) + x;
+                uint32_t width = spriteLeft + x;
                 if (width >= 0 && width < window->width && distances[width] > distance)
                 {
-                    EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour = sprite[(uint8_t)(((float)newY / spriteSize) * 64) * 64 + (uint8_t)(((float)x / spriteSize) * 64)];
+                    EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour = sprite[((uint8_t)(((float)newY / spriteSize) * 64) * 384 + (uint8_t)(((float)x / spriteSize) * 64)) + frame * 64];
                     if (colour.Red != 0 || colour.Green != 0 || colour.Blue != 0)
                     {
                         colour.Red *= brightness;
@@ -325,15 +327,25 @@ void update(uint64_t ticks)
     distance = sqrt(enemyOffsetX * enemyOffsetX + enemyOffsetY * enemyOffsetY);
     if (distance > 2.0f)
     {
-        move(&enemyX, &enemyY, -enemyOffsetX, -enemyOffsetY, 0.005f * ticks);
+        move(&enemyX, &enemyY, -enemyOffsetX, -enemyOffsetY, 0.003f * ticks);
+        passedTicks += ticks;
+        if (passedTicks > 200)
+        {
+            passedTicks = 0;
+            frame++;
+            if (frame == 6)
+            {
+                frame = 0;
+            }
+        }
     }
     rotatedY = enemyOffsetY * sin(direction) + enemyOffsetX * cos(direction);
     if (rotatedY > 1)
     {
         spriteSize = 4 * (distribution / rotatedY);
-        halfSpriteSize = spriteSize / 2;
         float uncappedBrightness = 1.5f - distance / 15.0f;
         brightness = max(min(uncappedBrightness, 1.0f), 0.0f);
+        spriteLeft = ((enemyOffsetY * cos(direction) - enemyOffsetX * sin(direction)) * (distribution / rotatedY) + halfWidth) - spriteSize / 2;
         splitTask(coreSprite, cores);
     }
 }

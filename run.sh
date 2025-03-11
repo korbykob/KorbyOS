@@ -19,6 +19,6 @@ uefi-run -b OVMF-pure-efi.fd -d -s 20 \
 -f src/programs/rendering/program.bmp:programs/rendering/program.bmp \
 -f bin/programs/rendering/program.bin:programs/rendering/program.bin \
 -f src/programs/rendering/wall.bmp:programs/rendering/wall.bmp \
--f src/programs/rendering/barrel.bmp:programs/rendering/barrel.bmp \
+-f src/programs/rendering/sprite.bmp:programs/rendering/sprite.bmp \
 bin/main.efi -- -accel kvm -m 16G -cpu host -smp 4 -monitor stdio
 echo

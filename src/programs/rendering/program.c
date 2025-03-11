@@ -1,6 +1,5 @@
 #include "../../program.h"
 
-uint64_t id = 0;
 uint64_t cores = 0;
 Window* window = NULL;
 uint8_t map[64][64] = {
@@ -95,9 +94,8 @@ float brightness = 0.0f;
 float distance = 0.0f;
 float rotatedY = 0.0f;
 
-void _start(uint64_t pid)
+void _start()
 {
-    id = pid;
     cores = getCores();
     texture = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(L"programs/rendering/wall.bmp", NULL), texture);
@@ -228,7 +226,7 @@ void update(uint64_t ticks)
                 unallocateWindow(window);
                 unallocate(texture);
                 unallocate(sprite);
-                quit(id);
+                quit();
                 break;
             case 1:
                 switch (((KeyEvent*)event)->scancode)

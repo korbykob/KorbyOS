@@ -1,8 +1,8 @@
 #include "shared.h"
 
-void quit(uint64_t pid)
+void quit()
 {
-    __asm__ volatile ("movq $0, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"(pid) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $0, %%rdi; int $0x80" : : : "%rdi", "%rsi");
 }
 
 void* allocate(uint64_t amount)
@@ -14,7 +14,7 @@ void* allocate(uint64_t amount)
 
 void unallocate(void* pointer)
 {
-    __asm__ volatile ("movq $2, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"((uint64_t)pointer) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $2, %%rdi; movq %0, %%rsi; int $0x80" : : "r"((uint64_t)pointer) : "%rdi", "%rsi");
 }
 
 Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
@@ -33,7 +33,7 @@ Window* allocateFullscreenWindow(const CHAR16* icon)
 
 void unallocateWindow(Window* window)
 {
-    __asm__ volatile ("movq $5, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"((uint64_t)window) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $5, %%rdi; movq %0, %%rsi; int $0x80" : : "r"((uint64_t)window) : "%rdi", "%rsi");
 }
 
 void* writeFile(const CHAR16* name, uint64_t size)
@@ -52,12 +52,12 @@ uint8_t* readFile(const CHAR16* name, uint64_t* size)
 
 void deleteFile(const CHAR16* name)
 {
-    __asm__ volatile ("movq $8, %%rdi; movq %0, %%rsi; int $0x80" :  : "r"((uint64_t)name) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $8, %%rdi; movq %0, %%rsi; int $0x80" : : "r"((uint64_t)name) : "%rdi", "%rsi");
 }
 
 uint64_t getCores()
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $9, %%rdi; int $0x80; movq %%rax, %0" : "=r"(result) :  : "%rdi");
+    __asm__ volatile ("movq $9, %%rdi; int $0x80; movq %%rax, %0" : "=r"(result) : : "%rdi");
     return result;
 }

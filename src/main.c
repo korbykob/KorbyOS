@@ -32,7 +32,7 @@ uint8_t programCount = 0;
 typedef struct {
     void* next;
     uint64_t pid;
-    void (*start)(uint64_t id);
+    void (*start)();
     void (*update)(uint64_t ticks);
 } Program;
 Program* running = NULL;
@@ -47,19 +47,12 @@ typedef struct
     Window* window;
 } Taskbar;
 Taskbar* taskbar = NULL;
+Program* currentProgram = 0;
 
-void quit(uint64_t pid)
+void quit()
 {
-    Program* program = (Program*)&running;
-    while (iterateList((void**)&program))
-    {
-        if (program->pid == pid)
-        {
-            unallocate(program->start);
-            removeItem((void**)&running, program);
-            break;
-        }
-    }
+    unallocate(currentProgram->start);
+    removeItem((void**)&running, currentProgram);
 }
 
 Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
@@ -134,7 +127,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
     switch (code)
     {
         case 0:
-            quit(arg1);
+            quit();
             break;
         case 1:
             return (uint64_t)allocate(arg1);
@@ -337,7 +330,10 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                             *destination++ = *source++;
                         }
                         program->update = (void*)program->start + 5;
-                        program->start(pid);
+                        Program* oldProgram = currentProgram;
+                        currentProgram = program;
+                        program->start();
+                        currentProgram = oldProgram;
                     }
                     i++;
                 }
@@ -469,6 +465,7 @@ void start()
         Program* program = (Program*)&running;
         while (iterateList((void**)&program))
         {
+            currentProgram = program;
             program->update(ticks);
         }
         Window* window = (Window*)&windows;

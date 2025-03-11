@@ -83,6 +83,7 @@ float direction = 0.0f;
 uint32_t halfHeight = 0;
 int32_t halfWidth = 0;
 float distribution = 0.0f;
+float* distances = NULL;
 float enemyX = 48.0f;
 float enemyY = 32.0f;
 
@@ -94,6 +95,7 @@ void _start(uint64_t pid)
     readBitmap(readFile(L"programs/rendering/wall.bmp", NULL), texture);
     window = allocateWindow(640, 360, L"Game", L"programs/rendering/program.bmp");
     window->mouseMode = 2;
+    distances = allocate(window->width * sizeof(float));
 }
 
 void move(float* x, float* y, float moveX, float moveY, float speed)
@@ -157,6 +159,7 @@ void coreRender(uint64_t id)
             raycastY += sin(raycastDirection) * raySpeed;
         }
         float distance = sqrt((raycastX - playerX) * (raycastX - playerX) + (raycastY - playerY) * (raycastY - playerY));
+        distances[line] = distance;
         uint64_t wallHeight = (uint64_t)(distribution * 4 / (distance * cos(raycastDirection - direction)));
         uint64_t halfWallHeight = wallHeight / 2;
         float uncappedBrightness = 1.5f - distance / 15.0f;
@@ -185,6 +188,7 @@ void update(uint64_t ticks)
         switch (event->id)
         {
             case 0:
+                unallocate(distances);
                 unallocateWindow(window);
                 unallocate(texture);
                 quit(id);
@@ -276,12 +280,28 @@ void update(uint64_t ticks)
         moveY += sin(moveDirection);
     }
     move(&playerX, &playerY, moveX, moveY, speed * ticks);
-    map[(uint8_t)(enemyY)][(uint8_t)(enemyX)] = 0;
     move(&enemyX, &enemyY, playerX - enemyX, playerY - enemyY, 0.005f * ticks);
-    map[(uint8_t)(enemyY)][(uint8_t)(enemyX)] = 1;
     halfHeight = window->height / 2;
     splitTask(coreBackground, cores);
     halfWidth = window->width / 2;
     distribution = halfWidth / tan(1.57f / 2.0f);
     splitTask(coreRender, cores);
+    float dx = enemyX - playerX;
+    float dy = enemyY - playerY;
+    float vx = dy * cos(direction) - dx * sin(direction);
+    float vy = dy * sin(direction) + dx * cos(direction);
+    uint32_t x = vx * (distribution / vy) + halfWidth;
+    if (vy > 0 && x >= 0 && x < window->width && distances[x] > sqrt(dx * dx + dy * dy))
+    {
+        uint32_t y = 4 * (distribution / vy);
+        uint32_t halfY = y / 2;
+        for (uint32_t i = 0; i < y; i++)
+        {
+            uint32_t line = halfHeight + i - halfY;
+            if (line >= 0 && line < window->height)
+            {
+                window->buffer[line * window->width + x] = red;
+            }
+        }
+    }
 }

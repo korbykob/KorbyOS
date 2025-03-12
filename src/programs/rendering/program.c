@@ -203,7 +203,7 @@ void coreSprite(uint64_t id)
                 if (width >= 0 && width < window->width && distances[width] > distance)
                 {
                     EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour = sprite[((uint8_t)(((float)newY / spriteSize) * 64) * 384 + (uint8_t)(((float)x / spriteSize) * 64)) + frame * 64];
-                    if (colour.Red != 0 || colour.Green != 0 || colour.Blue != 0)
+                    if (colour.Red != 0 || colour.Green != 0 || colour.Blue != 255)
                     {
                         colour.Red *= brightness;
                         colour.Green *= brightness;

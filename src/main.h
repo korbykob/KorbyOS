@@ -643,7 +643,7 @@ void completed()
     }
     serial("Waiting for cores\n");
     while (*(uint8_t*)0xEFFF != cpuCount);
-    serial("Starting OS\n");
+    serial("Starting OS\n\n");
     start();
     while (TRUE);
 }

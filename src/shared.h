@@ -75,9 +75,9 @@ void serialWrite(const char* string)
 //#define SERIAL_DEBUG
 
 #ifdef SERIAL_DEBUG
-#define serial(string); serialWrite(string);
+#define serial(string) serialWrite(string)
 #else
-#define serial(string);
+#define serial(string)
 #endif
 
 void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)

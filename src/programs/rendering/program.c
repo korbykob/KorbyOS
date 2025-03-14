@@ -160,10 +160,10 @@ void coreRender(uint64_t id)
         double raycastDirection = direction + atan((line - halfWidth) / distribution);
         while (map[(uint8_t)(raycastY)][(uint8_t)(raycastX)] != 1)
         {
-            double raySpeed = 1.0f;
+            double raySpeed = 1.0;
             if (map[(uint8_t)(raycastY)][(uint8_t)(raycastX)] == 2)
             {
-                raySpeed = 0.01f;
+                raySpeed = 0.01;
             }
             raycastX += cos(raycastDirection) * raySpeed;
             raycastY += sin(raycastDirection) * raySpeed;
@@ -172,14 +172,14 @@ void coreRender(uint64_t id)
         distances[line] = distance;
         uint64_t wallHeight = (uint64_t)(distribution * 4 / (distance * cos(raycastDirection - direction)));
         uint64_t halfWallHeight = wallHeight / 3;
-        double uncappedBrightness = 1.5f - distance / 15.0f;
-        double brightness = max(min(uncappedBrightness, 1.0f), 0.0f);
+        double uncappedBrightness = 1.5 - distance / 15.0;
+        double brightness = max(min(uncappedBrightness, 1.0), 0.0);
         for (uint64_t y = 0; y < wallHeight; y++)
         {
             uint32_t yPixel = halfHeight - halfWallHeight + y;
             if (yPixel >= 0 && yPixel < window->height)
             {
-                EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour = texture[(uint8_t)((double)(y) / wallHeight * 64) * 64 + (uint8_t)((int64_t)((raycastX + raycastY) * 10.0f) % 40 / 40.0f * 64)];
+                EFI_GRAPHICS_OUTPUT_BLT_PIXEL colour = texture[(uint8_t)((double)(y) / wallHeight * 64) * 64 + (uint8_t)((int64_t)((raycastX + raycastY) * 10.0) % 40 / 40.0 * 64)];
                 colour.Red *= brightness;
                 colour.Green *= brightness;
                 colour.Blue *= brightness;
@@ -257,14 +257,14 @@ void update(uint64_t ticks)
                 }
                 break;
             case 3:
-                direction += ((MouseEvent*)event)->x * 0.002f;
+                direction += ((MouseEvent*)event)->x * 0.002;
                 if (direction < 0)
                 {
-                    direction += 6.28f;
+                    direction += 6.28;
                 }
-                else if (direction > 6.28f)
+                else if (direction > 6.28)
                 {
-                    direction -= 6.28f;
+                    direction -= 6.28;
                 }
                 break;
         }
@@ -273,27 +273,27 @@ void update(uint64_t ticks)
     }
     if (q)
     {
-        direction -= 0.003f * ticks;
+        direction -= 0.003 * ticks;
         if (direction < 0)
         {
-            direction += 6.28f;
+            direction += 6.28;
         }
     }
     if (e)
     {
-        direction += 0.003f * ticks;
-        if (direction > 6.28f)
+        direction += 0.003 * ticks;
+        if (direction > 6.28)
         {
-            direction -= 6.28f;
+            direction -= 6.28;
         }
     }
-    double speed = 0.005f;
+    double speed = 0.005;
     if (shift)
     {
         speed *= 2;
     }
-    double moveX = 0.0f;
-    double moveY = 0.0f;
+    double moveX = 0.0;
+    double moveY = 0.0;
     if (w && !s)
     {
         moveX += cos(direction);
@@ -301,7 +301,7 @@ void update(uint64_t ticks)
     }
     if (a && !d)
     {
-        double moveDirection = direction + 1.57f;
+        double moveDirection = direction + 1.57;
         moveX -= cos(moveDirection);
         moveY -= sin(moveDirection);
     }
@@ -312,7 +312,7 @@ void update(uint64_t ticks)
     }
     if (d && !a)
     {
-        double moveDirection = direction + 1.57f;
+        double moveDirection = direction + 1.57;
         moveX += cos(moveDirection);
         moveY += sin(moveDirection);
     }
@@ -320,14 +320,14 @@ void update(uint64_t ticks)
     halfHeight = window->height / 2;
     splitTask(coreBackground, cores);
     halfWidth = window->width / 2;
-    distribution = halfWidth / tan(1.57f / 2.0f);
+    distribution = halfWidth / tan(1.57 / 2.0);
     splitTask(coreRender, cores);
     enemyOffsetX = enemyX - playerX;
     enemyOffsetY = enemyY - playerY;
     distance = sqrt(enemyOffsetX * enemyOffsetX + enemyOffsetY * enemyOffsetY);
-    if (distance > 2.0f)
+    if (distance > 2.0)
     {
-        move(&enemyX, &enemyY, -enemyOffsetX, -enemyOffsetY, 0.003f * ticks);
+        move(&enemyX, &enemyY, -enemyOffsetX, -enemyOffsetY, 0.003 * ticks);
         passedTicks += ticks;
         if (passedTicks > 200)
         {
@@ -343,8 +343,8 @@ void update(uint64_t ticks)
     if (rotatedY > 1)
     {
         spriteSize = 4 * (distribution / rotatedY);
-        double uncappedBrightness = 1.5f - distance / 15.0f;
-        brightness = max(min(uncappedBrightness, 1.0f), 0.0f);
+        double uncappedBrightness = 1.5 - distance / 15.0;
+        brightness = max(min(uncappedBrightness, 1.0), 0.0);
         spriteLeft = ((enemyOffsetY * cos(direction) - enemyOffsetX * sin(direction)) * (distribution / rotatedY) + halfWidth) - spriteSize / 2;
         splitTask(coreSprite, cores);
     }

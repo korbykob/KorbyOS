@@ -51,6 +51,35 @@ void* allocate(uint64_t amount);
 
 void unallocate(void* pointer);
 
+void outb(uint16_t port, uint8_t value)
+{
+    __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
+}
+
+uint8_t inb(uint16_t port)
+{
+    uint8_t value = 0;
+    __asm__ volatile ("inb %w1, %b0" : "=a"(value) : "Nd"(port) : "memory");
+    return value;
+}
+ 
+void serialWrite(const char* string)
+{
+    while (*string != 0)
+    {
+        while ((inb(0x3ED) & 0x20) == 0);
+        outb(0x3E8, *string++);
+    }
+}
+
+//#define SERIAL_DEBUG
+
+#ifdef SERIAL_DEBUG
+#define serial(string); serialWrite(string);
+#else
+#define serial(string);
+#endif
+
 void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
 {
     for (uint64_t i = 0; i < size; i++)

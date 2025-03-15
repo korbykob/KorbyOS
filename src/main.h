@@ -483,9 +483,15 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
     initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
     drawString(L"ISR exception occured:", 0, 0, white);
-    CHAR16 characters[10];
+    CHAR16 characters[100];
     ValueToString(characters, FALSE, isr);
     drawString(characters, 368, 0, white);
+    drawString(L"Last serial message:", 0, 32, white);
+    for (uint64_t i = 0; i < strlena(lastSerial); i++)
+    {
+        characters[i] = lastSerial[i];
+    }
+    drawString(characters, 336, 32, white);
     while (TRUE);
 }
 
@@ -495,12 +501,18 @@ __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_
     initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
     drawString(L"ISR exception occured:", 0, 0, white);
-    CHAR16 characters[10];
+    CHAR16 characters[100];
     ValueToString(characters, FALSE, isr);
     drawString(characters, 368, 0, white);
     drawString(L"Error code: 0x", 0, 32, white);
     ValueToHex(characters, code);
     drawString(characters, 224, 32, white);
+    drawString(L"Last serial message:", 0, 64, white);
+    for (uint64_t i = 0; i < strlena(lastSerial); i++)
+    {
+        characters[i] = lastSerial[i];
+    }
+    drawString(characters, 336, 64, white);
     while (TRUE);
 }
 

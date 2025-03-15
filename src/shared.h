@@ -1,6 +1,7 @@
 #include <efi.h>
 #include <efilib.h>
 
+const char* lastSerial = NULL;
 typedef struct
 {
     void* next;
@@ -65,6 +66,7 @@ uint8_t inb(uint16_t port)
  
 void serialWrite(const char* string)
 {
+    lastSerial = string;
     while (*string != 0)
     {
         while ((inb(0x3ED) & 0x20) == 0);

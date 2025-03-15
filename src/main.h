@@ -138,7 +138,7 @@ void unallocate(void* pointer)
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
-    serial("\n\nLocating GOP protocol\n");
+    serial("\n\nSetting up OS\nLocating GOP protocol\n");
     LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
     serial("Resetting GOP\n");
     uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
@@ -487,9 +487,17 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
     ValueToString(characters, FALSE, isr);
     drawString(characters, 368, 0, white);
     drawString(L"Last serial message:", 0, 32, white);
-    for (uint64_t i = 0; i < strlena(lastSerial); i++)
+    uint64_t serialLength = strlena(lastSerial);
+    for (uint64_t i = 0; i < serialLength + 1; i++)
     {
-        characters[i] = lastSerial[i];
+        if (lastSerial[i] != '\n')
+        {
+            characters[i] = lastSerial[i];
+        }
+        else
+        {
+            characters[i] = L' ';
+        }
     }
     drawString(characters, 336, 32, white);
     while (TRUE);
@@ -508,9 +516,17 @@ __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_
     ValueToHex(characters, code);
     drawString(characters, 224, 32, white);
     drawString(L"Last serial message:", 0, 64, white);
-    for (uint64_t i = 0; i < strlena(lastSerial); i++)
+    uint64_t serialLength = strlena(lastSerial);
+    for (uint64_t i = 0; i < serialLength + 1; i++)
     {
-        characters[i] = lastSerial[i];
+        if (lastSerial[i] != '\n')
+        {
+            characters[i] = lastSerial[i];
+        }
+        else
+        {
+            characters[i] = L' ';
+        }
     }
     drawString(characters, 336, 64, white);
     while (TRUE);

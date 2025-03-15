@@ -477,7 +477,19 @@ void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
     }
 }
 
-__attribute__((target("general-regs-only"))) void panic(uint8_t isr, uint64_t code)
+__attribute__((target("general-regs-only"))) void panic(uint8_t isr)
+{
+    __asm__ volatile ("cli");
+    initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
+    drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
+    drawString(L"ISR exception occured:", 0, 0, white);
+    CHAR16 characters[10];
+    ValueToString(characters, FALSE, isr);
+    drawString(characters, 368, 0, white);
+    while (TRUE);
+}
+
+__attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_t code)
 {
     __asm__ volatile ("cli");
     initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
@@ -494,161 +506,161 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr, uint64_t co
 
 __attribute__((interrupt, target("general-regs-only"))) void isr0(InterruptFrame* frame)
 {
-    panic(0, 0);
+    panic(0);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr1(InterruptFrame* frame)
 {
-    panic(1, 0);
+    panic(1);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr2(InterruptFrame* frame)
 {
-    panic(2, 0);
+    panic(2);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr3(InterruptFrame* frame)
 {
-    panic(3, 0);
+    panic(3);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr4(InterruptFrame* frame)
 {
-    panic(4, 0);
+    panic(4);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr5(InterruptFrame* frame)
 {
-    panic(5, 0);
+    panic(5);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr6(InterruptFrame* frame)
 {
-    panic(6, 0);
+    panic(6);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr7(InterruptFrame* frame)
 {
-    panic(7, 0);
+    panic(7);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr8(InterruptFrame* frame, uint64_t code)
 {
-    panic(8, code);
+    panicCode(8, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr9(InterruptFrame* frame)
 {
-    panic(9, 0);
+    panic(9);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr10(InterruptFrame* frame, uint64_t code)
 {
-    panic(10, code);
+    panicCode(10, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr11(InterruptFrame* frame, uint64_t code)
 {
-    panic(11, code);
+    panicCode(11, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr12(InterruptFrame* frame, uint64_t code)
 {
-    panic(12, code);
+    panicCode(12, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr13(InterruptFrame* frame, uint64_t code)
 {
-    panic(13, code);
+    panicCode(13, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr14(InterruptFrame* frame, uint64_t code)
 {
-    panic(14, code);
+    panicCode(14, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr15(InterruptFrame* frame)
 {
-    panic(15, 0);
+    panic(15);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr16(InterruptFrame* frame)
 {
-    panic(16, 0);
+    panic(16);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr17(InterruptFrame* frame, uint64_t code)
 {
-    panic(17, code);
+    panicCode(17, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr18(InterruptFrame* frame)
 {
-    panic(18, 0);
+    panic(18);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr19(InterruptFrame* frame)
 {
-    panic(19, 0);
+    panic(19);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr20(InterruptFrame* frame)
 {
-    panic(20, 0);
+    panic(20);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr21(InterruptFrame* frame, uint64_t code)
 {
-    panic(21, code);
+    panicCode(21, code);
 }
 __attribute__((interrupt, target("general-regs-only"))) void isr22(InterruptFrame* frame)
 {
-    panic(22, 0);
+    panic(22);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr23(InterruptFrame* frame)
 {
-    panic(23, 0);
+    panic(23);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr24(InterruptFrame* frame)
 {
-    panic(24, 0);
+    panic(24);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr25(InterruptFrame* frame)
 {
-    panic(25, 0);
+    panic(25);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr26(InterruptFrame* frame)
 {
-    panic(26, 0);
+    panic(26);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr27(InterruptFrame* frame)
 {
-    panic(27, 0);
+    panic(27);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr28(InterruptFrame* frame)
 {
-    panic(28, 0);
+    panic(28);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr29(InterruptFrame* frame, uint64_t code)
 {
-    panic(29, code);
+    panicCode(29, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr30(InterruptFrame* frame, uint64_t code)
 {
-    panic(30, code);
+    panicCode(30, code);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr31(InterruptFrame* frame)
 {
-    panic(31, 0);
+    panic(31);
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void hpet(InterruptFrame* frame)

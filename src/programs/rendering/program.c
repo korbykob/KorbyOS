@@ -99,7 +99,6 @@ uint8_t frame = 0;
 void _start()
 {
     cores = getCores();
-    cores /= frame;
     texture = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(L"programs/rendering/wall.bmp", NULL), texture);
     sprite = allocate(384 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));

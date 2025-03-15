@@ -113,7 +113,7 @@ Window* allocateFullscreenWindow(const CHAR16* icon)
 
 void unallocateWindow(Window* window)
 {
-    serial("Unallocating window\n");
+    serial("Removing window\n");
     Taskbar* item = (Taskbar*)&taskbar;
     while (iterateList((void**)&item))
     {

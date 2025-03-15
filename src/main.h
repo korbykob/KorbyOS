@@ -33,7 +33,7 @@ typedef struct
     uint64_t ss;
 } __attribute__((packed)) InterruptFrame;
 uint64_t hpetCounter = 0;
-uint8_t mouseCycle = 2;
+uint8_t mouseCycle = 1;
 uint8_t mouseBytes[3];
 BOOLEAN lastLeftClick = FALSE;
 BOOLEAN lastRightClick = FALSE;
@@ -138,7 +138,7 @@ void unallocate(void* pointer)
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
-    serial("Locating GOP protocol\n");
+    serial("\n\nLocating GOP protocol\n");
     LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
     serial("Resetting GOP\n");
     uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
@@ -477,6 +477,180 @@ void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
     }
 }
 
+__attribute__((target("general-regs-only"))) void panic(uint8_t isr, uint64_t code)
+{
+    __asm__ volatile ("cli");
+    initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
+    drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
+    drawString(L"ISR exception occured:", 0, 0, white);
+    CHAR16 characters[10];
+    ValueToString(characters, FALSE, isr);
+    drawString(characters, 368, 0, white);
+    drawString(L"Error code: 0x", 0, 32, white);
+    ValueToHex(characters, code);
+    drawString(characters, 224, 32, white);
+    while (TRUE);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr0(InterruptFrame* frame)
+{
+    panic(0, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr1(InterruptFrame* frame)
+{
+    panic(1, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr2(InterruptFrame* frame)
+{
+    panic(2, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr3(InterruptFrame* frame)
+{
+    panic(3, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr4(InterruptFrame* frame)
+{
+    panic(4, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr5(InterruptFrame* frame)
+{
+    panic(5, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr6(InterruptFrame* frame)
+{
+    panic(6, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr7(InterruptFrame* frame)
+{
+    panic(7, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr8(InterruptFrame* frame, uint64_t code)
+{
+    panic(8, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr9(InterruptFrame* frame)
+{
+    panic(9, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr10(InterruptFrame* frame, uint64_t code)
+{
+    panic(10, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr11(InterruptFrame* frame, uint64_t code)
+{
+    panic(11, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr12(InterruptFrame* frame, uint64_t code)
+{
+    panic(12, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr13(InterruptFrame* frame, uint64_t code)
+{
+    panic(13, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr14(InterruptFrame* frame, uint64_t code)
+{
+    panic(14, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr15(InterruptFrame* frame)
+{
+    panic(15, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr16(InterruptFrame* frame)
+{
+    panic(16, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr17(InterruptFrame* frame, uint64_t code)
+{
+    panic(17, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr18(InterruptFrame* frame)
+{
+    panic(18, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr19(InterruptFrame* frame)
+{
+    panic(19, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr20(InterruptFrame* frame)
+{
+    panic(20, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr21(InterruptFrame* frame, uint64_t code)
+{
+    panic(21, code);
+}
+__attribute__((interrupt, target("general-regs-only"))) void isr22(InterruptFrame* frame)
+{
+    panic(22, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr23(InterruptFrame* frame)
+{
+    panic(23, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr24(InterruptFrame* frame)
+{
+    panic(24, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr25(InterruptFrame* frame)
+{
+    panic(25, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr26(InterruptFrame* frame)
+{
+    panic(26, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr27(InterruptFrame* frame)
+{
+    panic(27, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr28(InterruptFrame* frame)
+{
+    panic(28, 0);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr29(InterruptFrame* frame, uint64_t code)
+{
+    panic(29, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr30(InterruptFrame* frame, uint64_t code)
+{
+    panic(30, code);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void isr31(InterruptFrame* frame)
+{
+    panic(31, 0);
+}
+
 __attribute__((interrupt, target("general-regs-only"))) void hpet(InterruptFrame* frame)
 {
     hpetCounter++;
@@ -549,29 +723,45 @@ void completed()
     outb(0xA1, 0x01);
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
-    serial("Initialising HPET\n");
-    *(uint32_t*)(hpetAddress + 0x10) |= 0b11;
-    *(uint32_t*)(hpetAddress + 0x100) |= 0b1100;
-    *(uint64_t*)(hpetAddress + 0x108) = (1000000000000000ULL / ((*(uint64_t*)hpetAddress >> 32) & 0xFFFFFFFF)) / 1000;
-    *(uint64_t*)(hpetAddress + 0xF0) = 0;
+    serial("Setting up exception handlers\n");
+    installInterrupt(0, isr0, FALSE);
+    installInterrupt(1, isr1, FALSE);
+    installInterrupt(2, isr2, FALSE);
+    installInterrupt(3, isr3, FALSE);
+    installInterrupt(4, isr4, FALSE);
+    installInterrupt(5, isr5, FALSE);
+    installInterrupt(6, isr6, FALSE);
+    installInterrupt(7, isr7, FALSE);
+    installInterrupt(8, isr8, FALSE);
+    installInterrupt(9, isr9, FALSE);
+    installInterrupt(10, isr10, FALSE);
+    installInterrupt(11, isr11, FALSE);
+    installInterrupt(12, isr12, FALSE);
+    installInterrupt(13, isr13, FALSE);
+    installInterrupt(14, isr14, FALSE);
+    installInterrupt(15, isr15, FALSE);
+    installInterrupt(16, isr16, FALSE);
+    installInterrupt(17, isr17, FALSE);
+    installInterrupt(18, isr18, FALSE);
+    installInterrupt(19, isr19, FALSE);
+    installInterrupt(20, isr20, FALSE);
+    installInterrupt(21, isr21, FALSE);
+    installInterrupt(22, isr22, FALSE);
+    installInterrupt(23, isr23, FALSE);
+    installInterrupt(24, isr24, FALSE);
+    installInterrupt(25, isr25, FALSE);
+    installInterrupt(26, isr26, FALSE);
+    installInterrupt(27, isr27, FALSE);
+    installInterrupt(28, isr28, FALSE);
+    installInterrupt(29, isr29, FALSE);
+    installInterrupt(30, isr30, FALSE);
+    installInterrupt(31, isr31, FALSE);
     serial("Adding HPET to IDT\n");
     installInterrupt(0, hpet, TRUE);
     serial("Adding PS/2 keyboard to IDT\n");
     installInterrupt(1, keyboard, TRUE);
     serial("Unmasking second PIC\n");
     unmaskInterrupt(2);
-    serial("Initialising PS/2 mouse\n");
-    outb(0x64, 0xA8);
-    outb(0x64, 0x20);
-    uint8_t status = inb(0x60) | 2;
-    outb(0x64, 0x60);
-    outb(0x60, status);
-    outb(0x64, 0xD4);
-    outb(0x60, 0xF6);
-    inb(0x60);
-    outb(0x64, 0xD4);
-    outb(0x60, 0xF4);
-    inb(0x60);
     serial("Adding PS/2 mouse to IDT\n");
     installInterrupt(12, mouse, TRUE);
     serial("Adding syscall to IDT\n");
@@ -587,6 +777,23 @@ void completed()
     __asm__ volatile ("lidt %0" : : "m"(idtr));
     serial("Enabling interrupts\n");
     __asm__ volatile ("sti");
+    serial("Initialising HPET\n");
+    *(uint32_t*)(hpetAddress + 0x10) |= 0b11;
+    *(uint32_t*)(hpetAddress + 0x100) |= 0b1100;
+    *(uint64_t*)(hpetAddress + 0x108) = (1000000000000000ULL / ((*(uint64_t*)hpetAddress >> 32) & 0xFFFFFFFF)) / 1000;
+    *(uint64_t*)(hpetAddress + 0xF0) = 0;
+    serial("Initialising PS/2 mouse\n");
+    outb(0x64, 0xA8);
+    outb(0x64, 0x20);
+    uint8_t status = inb(0x60) | 2;
+    outb(0x64, 0x60);
+    outb(0x60, status);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF6);
+    inb(0x60);
+    outb(0x64, 0xD4);
+    outb(0x60, 0xF4);
+    inb(0x60);
     serial("Identity mapping other cores\n");
     uint64_t* PML4T = (uint64_t*)0x1000;
     for (uint16_t i = 0; i < 512; i++)

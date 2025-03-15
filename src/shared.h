@@ -72,7 +72,7 @@ void serialWrite(const char* string)
     }
 }
 
-//#define SERIAL_DEBUG
+#define SERIAL_DEBUG
 
 #ifdef SERIAL_DEBUG
 #define serial(string) serialWrite(string)

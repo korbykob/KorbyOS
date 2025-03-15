@@ -482,11 +482,11 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
     __asm__ volatile ("cli");
     initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
-    drawString(L"ISR exception occured:", 0, 0, white);
     CHAR16 characters[100];
     ValueToString(characters, FALSE, isr);
-    drawString(characters, 368, 0, white);
-    drawString(L"Last debug message:", 0, 32, white);
+    uint32_t x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 23) * 8;
+    drawString(L"ISR exception occured:", x, GOP->Mode->Info->VerticalResolution / 2 - 32, white);
+    drawString(characters, x + 368, GOP->Mode->Info->VerticalResolution / 2 - 32, white);
     for (uint64_t i = 0; i < strlena(lastDebug) + 1; i++)
     {
         if (lastDebug[i] != '\n')
@@ -498,7 +498,9 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
             characters[i] = L' ';
         }
     }
-    drawString(characters, 320, 32, white);
+    x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 20) * 8;
+    drawString(L"Last debug message:", x, GOP->Mode->Info->VerticalResolution / 2, white);
+    drawString(characters, x + 320, GOP->Mode->Info->VerticalResolution / 2, white);
     while (TRUE);
 }
 
@@ -507,14 +509,15 @@ __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_
     __asm__ volatile ("cli");
     initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
-    drawString(L"ISR exception occured:", 0, 0, white);
     CHAR16 characters[100];
     ValueToString(characters, FALSE, isr);
-    drawString(characters, 368, 0, white);
-    drawString(L"Error code: 0x", 0, 32, white);
+    uint32_t x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 23) * 8;
+    drawString(L"ISR exception occured:", x, GOP->Mode->Info->VerticalResolution / 2 - 48, white);
+    drawString(characters, x + 368, GOP->Mode->Info->VerticalResolution / 2 - 48, white);
     ValueToHex(characters, code);
-    drawString(characters, 224, 32, white);
-    drawString(L"Last debug message:", 0, 64, white);
+    x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 14) * 8;
+    drawString(L"Error code: 0x", x, GOP->Mode->Info->VerticalResolution / 2 - 16, white);
+    drawString(characters, x + 224, GOP->Mode->Info->VerticalResolution / 2 - 16, white);
     for (uint64_t i = 0; i < strlena(lastDebug) + 1; i++)
     {
         if (lastDebug[i] != '\n')
@@ -526,7 +529,9 @@ __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_
             characters[i] = L' ';
         }
     }
-    drawString(characters, 320, 64, white);
+    x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 20) * 8;
+    drawString(L"Last debug message:", x, GOP->Mode->Info->VerticalResolution / 2 + 16, white);
+    drawString(characters, x + 320, GOP->Mode->Info->VerticalResolution / 2 + 16, white);
     while (TRUE);
 }
 

@@ -1,7 +1,7 @@
 #include <efi.h>
 #include <efilib.h>
 
-const char* lastSerial = NULL;
+const char* lastDebug = NULL;
 typedef struct
 {
     void* next;
@@ -63,24 +63,20 @@ uint8_t inb(uint16_t port)
     __asm__ volatile ("inb %w1, %b0" : "=a"(value) : "Nd"(port) : "memory");
     return value;
 }
- 
-void serialWrite(const char* string)
+
+#define SERIAL_DEBUG
+
+void debug(const char* string)
 {
-    lastSerial = string;
+    lastDebug = string;
+    #ifdef SERIAL_DEBUG
     while (*string != 0)
     {
         while ((inb(0x3ED) & 0x20) == 0);
         outb(0x3E8, *string++);
     }
+    #endif
 }
-
-#define SERIAL_DEBUG
-
-#ifdef SERIAL_DEBUG
-#define serial(string) serialWrite(string)
-#else
-#define serial(string)
-#endif
 
 void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
 {

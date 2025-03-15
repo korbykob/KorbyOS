@@ -51,75 +51,75 @@ Program* currentProgram = 0;
 
 void quit()
 {
-    serial("Exiting program\n");
+    debug("Exiting program\n");
     unallocate(currentProgram->start);
     removeItem((void**)&running, currentProgram);
-    serial("\n");
+    debug("\n");
 }
 
 Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
 {
-    serial("Allocating window\n");
+    debug("Allocating window\n");
     Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = GOP->Mode->Info->HorizontalResolution / 2 - (width + 20) / 2;
     window->y = GOP->Mode->Info->VerticalResolution / 2 - (height + 57) / 2;
     window->width = width;
     window->height = height;
-    serial("Reallocating title\n");
+    debug("Reallocating title\n");
     window->title = allocate((StrLen(title) + 1) * 2);
     StrCpy(window->title, title);
-    serial("Allocating icon\n");
+    debug("Allocating icon\n");
     window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(icon, NULL), window->icon);
-    serial("Allocating video buffer\n");
+    debug("Allocating video buffer\n");
     window->buffer = allocate(width * height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     window->mouseMode = 0;
     window->fullscreen = FALSE;
     window->minimised = FALSE;
     window->events = NULL;
     focus = window;
-    serial("Adding to taskbar\n");
+    debug("Adding to taskbar\n");
     Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
     item->window = window;
-    serial("\n");
+    debug("\n");
     return window;
 }
 
 Window* allocateFullscreenWindow(const CHAR16* icon)
 {
-    serial("Allocating fullscreen window\n");
+    debug("Allocating fullscreen window\n");
     Window* window = addItem((void**)&windows, sizeof(Window));
     window->x = 0;
     window->y = 0;
     window->width = GOP->Mode->Info->HorizontalResolution;
     window->height = GOP->Mode->Info->VerticalResolution;
     window->title = NULL;
-    serial("Allocating icon\n");
+    debug("Allocating icon\n");
     window->icon = allocate(24 * 24 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(icon, NULL), window->icon);
-    serial("Allocating video buffer\n");
+    debug("Allocating video buffer\n");
     window->buffer = allocate(window->width * window->height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     window->mouseMode = 0;
     window->fullscreen = TRUE;
     window->minimised = FALSE;
     window->events = NULL;
     focus = window;
-    serial("Adding to taskbar\n");
+    debug("Adding to taskbar\n");
     Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
     item->window = window;
-    serial("\n");
+    debug("\n");
     return window;
 }
 
 void unallocateWindow(Window* window)
 {
-    serial("Removing window\n");
+    debug("Removing window\n");
     Taskbar* item = (Taskbar*)&taskbar;
     while (iterateList((void**)&item))
     {
         if (item->window == window)
         {
-            serial("Removing from taskbar\n");
+            debug("Removing from taskbar\n");
             removeItem((void**)&taskbar, item);
             break;
         }
@@ -130,16 +130,16 @@ void unallocateWindow(Window* window)
     }
     if (window->title)
     {
-        serial("Unallocating title\n");
+        debug("Unallocating title\n");
         unallocate(window->title);
     }
-    serial("Unallocating icon\n");
+    debug("Unallocating icon\n");
     unallocate(window->icon);
-    serial("Unallocating video buffer\n");
+    debug("Unallocating video buffer\n");
     unallocate(window->buffer);
-    serial("Unallocating window\n");
+    debug("Unallocating window\n");
     removeItem((void**)&windows, window);
-    serial("\n");
+    debug("\n");
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4)
@@ -340,19 +340,19 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                                 iterator = (Program*)&running;
                             }
                         }
-                        serial("Allocating program\n");
+                        debug("Allocating program\n");
                         Program* program = addItem((void**)&running, sizeof(Program));
                         program->pid = pid;
-                        serial("Allocating binary\n");
+                        debug("Allocating binary\n");
                         program->start = allocate(item->size);
                         copyMemory(item->data, (uint8_t*)program->start, item->size);
                         program->update = (void*)program->start + 5;
                         Program* oldProgram = currentProgram;
                         currentProgram = program;
-                        serial("Starting program\n\n");
+                        debug("Starting program\n\n");
                         program->start();
                         currentProgram = oldProgram;
-                        serial("Program started\n\n");
+                        debug("Program started\n\n");
                     }
                     i++;
                 }
@@ -412,10 +412,10 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                 {
                     if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
                     {
-                        serial("Sending quit event to window\n");
+                        debug("Sending quit event to window\n");
                         Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
                         event->id = 0;
-                        serial("\n");
+                        debug("\n");
                         break;
                     }
                     else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
@@ -454,14 +454,14 @@ void start()
 {
     File* file = (File*)&files;
     ProgramData* current = NULL;
-    serial("Loading programs\n");
+    debug("Loading programs\n");
     while (iterateList((void**)&file))
     {
         if (StrnCmp(file->name, L"programs/", 9) == 0)
         {
             if (StrCmp(file->name + StrLen(file->name) - 4, L".bin") == 0)
             {
-                serial("Located binary\n");
+                debug("Located binary\n");
                 current = addItem((void**)&programs, sizeof(ProgramData));
                 current->size = file->size;
                 current->data = file->data;
@@ -469,19 +469,19 @@ void start()
             }
             else if (current && StrCmp(file->name + StrLen(file->name) - 4, L".bmp") == 0)
             {
-                serial("Located icon\n");
+                debug("Located icon\n");
                 readBitmap(file->data, current->icon);
                 current = NULL;
             }
         }
     }
-    serial("Allocating video buffer\n");
+    debug("Allocating video buffer\n");
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = allocate(GOP->Mode->FrameBufferSize);
     initGraphics(videoBuffer, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     uint64_t ticks = 0;
     mouseX = GOP->Mode->Info->HorizontalResolution / 2;
     mouseY = GOP->Mode->Info->VerticalResolution / 2;
-    serial("Starting loop\n\n");
+    debug("Starting loop\n\n");
     while (TRUE)
     {
         if (!focus || !focus->fullscreen)

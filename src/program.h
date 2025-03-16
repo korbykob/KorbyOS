@@ -2,7 +2,7 @@
 
 void quit()
 {
-    __asm__ volatile ("movq $0, %%rdi; int $0x80" : : : "%rdi", "%rsi");
+    __asm__ volatile ("movq $0, %%rdi; int $0x80" : : : "%rdi");
 }
 
 void* allocate(uint64_t amount)

@@ -143,7 +143,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     debug("Resetting GOP\n");
     uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
     uefi_call_wrapper(ST->ConOut->SetCursorPosition, 3, ST->ConOut, 0, 0);
-    debug("Displaying resolution prompt\n");
+    debug("Displaying resolution prompt\n\n");
     Print(L"Use the up and down arrow keys to move.\nPress enter to select and boot using the selected resolution.\n\nPlease select a resolution:\n");
     for (uint32_t i = 0; i < GOP->Mode->MaxMode; i++)
     {
@@ -501,7 +501,7 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
     x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 20) * 8;
     drawString(L"Last debug message:", x, GOP->Mode->Info->VerticalResolution / 2, white);
     drawString(characters, x + 320, GOP->Mode->Info->VerticalResolution / 2, white);
-    while (TRUE);
+    __asm__ volatile ("hlt");
 }
 
 __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_t code)
@@ -532,7 +532,7 @@ __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_
     x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 20) * 8;
     drawString(L"Last debug message:", x, GOP->Mode->Info->VerticalResolution / 2 + 16, white);
     drawString(characters, x + 320, GOP->Mode->Info->VerticalResolution / 2 + 16, white);
-    while (TRUE);
+    __asm__ volatile ("hlt");
 }
 
 __attribute__((interrupt, target("general-regs-only"))) void isr0(InterruptFrame* frame)
@@ -895,5 +895,5 @@ void completed()
     while (*(uint8_t*)0xEFFF != cpuCount);
     debug("Starting OS\n\n");
     start();
-    while (TRUE);
+    __asm__ volatile ("cli; hlt");
 }

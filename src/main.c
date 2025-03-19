@@ -54,7 +54,7 @@ void quit()
     debug("Exiting program\n");
     unallocate(currentProgram->start);
     removeItem((void**)&running, currentProgram);
-    debug("\n");
+    debug("Exited program\n\n");
 }
 
 Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
@@ -81,7 +81,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, con
     debug("Adding to taskbar\n");
     Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
     item->window = window;
-    debug("\n");
+    debug("Allocated window\n\n");
     return window;
 }
 
@@ -107,7 +107,7 @@ Window* allocateFullscreenWindow(const CHAR16* icon)
     debug("Adding to taskbar\n");
     Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
     item->window = window;
-    debug("\n");
+    debug("Allocated fullscreen window\n\n");
     return window;
 }
 
@@ -139,7 +139,7 @@ void unallocateWindow(Window* window)
     unallocate(window->buffer);
     debug("Unallocating window\n");
     removeItem((void**)&windows, window);
-    debug("\n");
+    debug("Removed window\n\n");
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4)
@@ -418,7 +418,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         debug("Sending quit event to window\n");
                         Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
                         event->id = 0;
-                        debug("\n");
+                        debug("Sent quit event to window\n\n");
                         break;
                     }
                     else if (mouseX >= newWindows[i]->x + newWindows[i]->width - 59 && mouseX < newWindows[i]->x + newWindows[i]->width - 27 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)

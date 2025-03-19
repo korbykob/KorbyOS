@@ -86,25 +86,14 @@ void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
     }
 }
 
-void splitTask(void (*task)(uint64_t id), uint64_t count)
+void getTime(uint8_t* hour, uint8_t* minute)
 {
-    for (uint64_t i = 0; i < count - 1; i++)
-    {
-        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)task;
-    }
-    task(0);
-    while (TRUE)
-    {
-        uint64_t done = 0;
-        for (uint64_t i = 0; i < count - 1; i++)
-        {
-            done += *(uint64_t*)(0x5008 + i * 8);
-        }
-        if (done == 0)
-        {
-            break;
-        }
-    }
+    outb(0x70, 0x04);
+    *hour = inb(0x71);
+    *hour = (*hour >> 4) * 10 + (*hour & 0x0F);
+    outb(0x70, 0x02);
+    *minute = inb(0x71);
+    *minute = (*minute >> 4) * 10 + (*minute & 0x0F);
 }
 
 void readBitmap(uint8_t* bitmap, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)
@@ -178,6 +167,28 @@ uint64_t listLength(void** list)
     }
     return i - 1;
 }
+
+void splitTask(void (*task)(uint64_t id), uint64_t count)
+{
+    for (uint64_t i = 0; i < count - 1; i++)
+    {
+        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)task;
+    }
+    task(0);
+    while (TRUE)
+    {
+        uint64_t done = 0;
+        for (uint64_t i = 0; i < count - 1; i++)
+        {
+            done += *(uint64_t*)(0x5008 + i * 8);
+        }
+        if (done == 0)
+        {
+            break;
+        }
+    }
+}
+
 
 void initGraphics(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer, uint32_t pitch, uint8_t* font)
 {

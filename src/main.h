@@ -81,6 +81,7 @@ typedef struct
 uint64_t apicAddress = 0;
 uint64_t cpuCount = 0;
 uint8_t* cpus = NULL;
+uint64_t soundDuration = 0;
 
 void* allocate(uint64_t amount)
 {
@@ -313,6 +314,14 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* sprite = AllocatePool(spriteSize);
     uefi_call_wrapper(file->Read, 3, file, &spriteSize, sprite);
     uefi_call_wrapper(file->Close, 1, file);
+    debug("Loading programs/rendering/test.wav\n");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\test.wav", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t testSize = info->FileSize;
+    FreePool(info);
+    uint8_t* test = AllocatePool(testSize);
+    uefi_call_wrapper(file->Read, 3, file, &testSize, testSize);
+    uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;
     UINTN size;
@@ -365,6 +374,11 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     newFile->name = L"programs/rendering/sprite.bmp";
     newFile->size = spriteSize;
     newFile->data = sprite;
+    debug("Adding programs/rendering/test.wav\n");
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/rendering/test.wav";
+    newFile->size = testSize;
+    newFile->data = test;
     debug("Setting up GDT\n");
     uint64_t gdt[3];
     gdt[0] = 0x0000000000000000;
@@ -449,6 +463,17 @@ void getTime(uint8_t* hour, uint8_t* minute)
     *minute = (*minute >> 4) * 10 + (*minute & 0x0F);
 }
 
+
+void sound(uint32_t frequency, uint64_t milliseconds)
+{
+    soundDuration = milliseconds;
+    outb(0x43, 0xB6);
+    uint32_t division = 1193180 / frequency;
+    outb(0x42, division);
+    outb(0x42, division >> 8);
+    outb(0x61, inb(0x61) | 0b11);
+}
+
 void unmaskInterrupt(uint8_t interrupt)
 {
     if (interrupt < 8)
@@ -480,6 +505,7 @@ void installInterrupt(uint8_t interrupt, void* handler, BOOLEAN hardware)
 __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
 {
     __asm__ volatile ("cli");
+    outb(0x61, inb(0x61) & 0b11111101);
     initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
     CHAR16 characters[100];
@@ -507,6 +533,7 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
 __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_t code)
 {
     __asm__ volatile ("cli");
+    outb(0x61, inb(0x61) & 0b11111101);
     initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
     CHAR16 characters[100];
@@ -697,6 +724,14 @@ __attribute__((interrupt, target("general-regs-only"))) void isr31(InterruptFram
 __attribute__((interrupt, target("general-regs-only"))) void hpet(InterruptFrame* frame)
 {
     hpetCounter++;
+    if (soundDuration > 0)
+    {
+        soundDuration--;
+        if (soundDuration == 0)
+        {
+            outb(0x61, inb(0x61) & 0b11111101);
+        }
+    }
     outb(0x20, 0x20);
 }
 

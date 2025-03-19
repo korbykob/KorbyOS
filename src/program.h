@@ -61,3 +61,8 @@ uint64_t getCores()
     __asm__ volatile ("movq $9, %%rdi; int $0x80; movq %%rax, %0" : "=r"(result) : : "%rdi");
     return result;
 }
+
+void sound(uint32_t frequency, uint64_t milliseconds)
+{
+    __asm__ volatile ("movq $10, %%rdi; movq %0, %%rsi; movq %1, %%rdx; int $0x80" : : "r"((uint64_t)frequency), "r"(milliseconds) : "%rdi", "%rsi", "%rdx");
+}

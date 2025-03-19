@@ -179,6 +179,9 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
         case 9:
             return cpuCount + 1;
             break;
+        case 10:
+            sound(arg1, arg2);
+            break;
     }
     return 0;
 }

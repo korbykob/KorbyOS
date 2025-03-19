@@ -20,5 +20,4 @@ uefi-run -b OVMF-pure-efi.fd -d -s 20 \
 -f bin/programs/rendering/program.bin:programs/rendering/program.bin \
 -f src/programs/rendering/wall.bmp:programs/rendering/wall.bmp \
 -f src/programs/rendering/sprite.bmp:programs/rendering/sprite.bmp \
--f src/programs/rendering/test.wav:programs/rendering/test.wav \
 bin/main.efi -- -accel kvm -m 16G -cpu host -smp 4 -audiodev pa,id=speaker -machine pcspk-audiodev=speaker -serial null -serial null -serial stdio

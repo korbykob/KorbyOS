@@ -314,14 +314,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* sprite = AllocatePool(spriteSize);
     uefi_call_wrapper(file->Read, 3, file, &spriteSize, sprite);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/test.wav\n");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\test.wav", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t testSize = info->FileSize;
-    FreePool(info);
-    uint8_t* test = AllocatePool(testSize);
-    uefi_call_wrapper(file->Read, 3, file, &testSize, testSize);
-    uefi_call_wrapper(file->Close, 1, file);
     UINTN entries;
     UINTN key;
     UINTN size;
@@ -374,11 +366,6 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     newFile->name = L"programs/rendering/sprite.bmp";
     newFile->size = spriteSize;
     newFile->data = sprite;
-    debug("Adding programs/rendering/test.wav\n");
-    newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/rendering/test.wav";
-    newFile->size = testSize;
-    newFile->data = test;
     debug("Setting up GDT\n");
     uint64_t gdt[3];
     gdt[0] = 0x0000000000000000;

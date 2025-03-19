@@ -15,6 +15,5 @@ sudo cp src/programs/rendering/program.bmp staging/programs/rendering/program.bm
 sudo cp bin/programs/rendering/program.bin staging/programs/rendering/program.bin
 sudo cp src/programs/rendering/wall.bmp staging/programs/rendering/wall.bmp
 sudo cp src/programs/rendering/sprite.bmp staging/programs/rendering/sprite.bmp
-sudo cp src/programs/rendering/test.wav staging/programs/rendering/test.wav
 sudo umount staging
 sudo rm -r staging

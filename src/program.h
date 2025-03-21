@@ -1,68 +1,118 @@
+#pragma once
+
 #include "shared.h"
+
+void execute(const CHAR16* file)
+{
+    __asm__ volatile ("movq $0, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)file) : "%rdi", "%rsi");
+}
 
 void quit()
 {
-    __asm__ volatile ("movq $0, %%rdi; int $0x80" : : : "%rdi");
+    __asm__ volatile ("movq $1, %%rdi; int $0x80" : : : "%rdi");
 }
 
 void* allocate(uint64_t amount)
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $1, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=r"(result) : "r"(amount) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $2, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=g"(result) : "g"(amount) : "%rdi", "%rsi");
     return (void*)result;
 }
 
 void unallocate(void* pointer)
 {
-    __asm__ volatile ("movq $2, %%rdi; movq %0, %%rsi; int $0x80" : : "r"((uint64_t)pointer) : "%rdi", "%rsi");
-}
-
-Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
-{
-    uint64_t result = 0;
-    __asm__ volatile ("movq $3, %%rdi; movq %1, %%rsi; movq %2, %%rdx; movq %3, %%rcx; movq %4, %%r8; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)width), "r"((uint64_t)height), "r"((uint64_t)title), "r"((uint64_t)icon) : "%rdi", "%rsi", "%rdx", "%rcx");
-    return (Window*)result;
-}
-
-Window* allocateFullscreenWindow(const CHAR16* icon)
-{
-    uint64_t result = 0;
-    __asm__ volatile ("movq $4, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)icon) : "%rdi", "%rsi");
-    return (Window*)result;
-}
-
-void unallocateWindow(Window* window)
-{
-    __asm__ volatile ("movq $5, %%rdi; movq %0, %%rsi; int $0x80" : : "r"((uint64_t)window) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $3, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)pointer) : "%rdi", "%rsi");
 }
 
 void* writeFile(const CHAR16* name, uint64_t size)
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $6, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)name), "r"(size) : "%rdi", "%rsi", "%rdx");
+    __asm__ volatile ("movq $4, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)name), "g"(size) : "%rdi", "%rsi", "%rdx");
     return (void*)result;
 }
 
 uint8_t* readFile(const CHAR16* name, uint64_t* size)
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $7, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=r"(result) : "r"((uint64_t)name), "r"((uint64_t)size) : "%rdi", "%rsi", "%rdx");
+    __asm__ volatile ("movq $5, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)name), "g"((uint64_t)size) : "%rdi", "%rsi", "%rdx");
     return (uint8_t*)result;
 }
 
 void deleteFile(const CHAR16* name)
 {
-    __asm__ volatile ("movq $8, %%rdi; movq %0, %%rsi; int $0x80" : : "r"((uint64_t)name) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $6, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)name) : "%rdi", "%rsi");
+}
+
+File** getFiles(const CHAR16* root, uint64_t* count)
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $7, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)root), "g"((uint64_t)count) : "%rdi", "%rsi", "%rdx");
+    return (File**)result;
 }
 
 uint64_t getCores()
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $9, %%rdi; int $0x80; movq %%rax, %0" : "=r"(result) : : "%rdi");
+    __asm__ volatile ("movq $8, %%rdi; int $0x80; movq %%rax, %0" : "=g"(result) : : "%rdi");
     return result;
 }
 
-void sound(uint32_t frequency, uint64_t milliseconds)
+PointerArray* addKeyCall(void (*keyCall)(uint8_t scancode, BOOLEAN pressed))
 {
-    __asm__ volatile ("movq $10, %%rdi; movq %0, %%rsi; movq %1, %%rdx; int $0x80" : : "r"((uint64_t)frequency), "r"(milliseconds) : "%rdi", "%rsi", "%rdx");
+    uint64_t result = 0;
+    __asm__ volatile ("movq $9, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)keyCall) : "%rdi", "%rsi");
+    return (PointerArray*)result;
+}
+
+void removeKeyCall(PointerArray* keyCall)
+{
+    __asm__ volatile ("movq $10, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)keyCall) : "%rdi", "%rsi");
+}
+
+PointerArray* addMoveCall(void (*moveCall)(int16_t x, int16_t y))
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $11, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)moveCall) : "%rdi", "%rsi");
+    return (PointerArray*)result;
+}
+
+void removeMoveCall(PointerArray* moveCall)
+{
+    __asm__ volatile ("movq $12, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)moveCall) : "%rdi", "%rsi");
+}
+
+PointerArray* addClickCall(void (*clickCall)(BOOLEAN left, BOOLEAN pressed))
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $13, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)clickCall) : "%rdi", "%rsi");
+    return (PointerArray*)result;
+}
+
+void removeClickCall(PointerArray* clickCall)
+{
+    __asm__ volatile ("movq $14, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)clickCall) : "%rdi", "%rsi");
+}
+
+uint8_t registerSyscallHandler(const CHAR16* name, uint64_t (*syscallHandler)(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4))
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $15, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)name), "g"((uint64_t)syscallHandler) : "%rdi", "%rsi", "%rdx");
+    return (uint8_t)result;
+}
+
+uint8_t getRegisteredSyscall(const CHAR16* name)
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $16, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)name) : "%rdi", "%rsi");
+    return (uint8_t)result;
+}
+
+void unregisterSyscallHandler(const CHAR16* name)
+{
+    __asm__ volatile ("movq $17, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)name) : "%rdi", "%rsi");
+}
+
+void getDisplayInfo(Display* display)
+{
+    __asm__ volatile ("movq $18, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)display) : "%rdi", "%rsi");
 }

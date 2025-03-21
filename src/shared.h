@@ -4,6 +4,30 @@
 const char* lastDebug = NULL;
 typedef struct
 {
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer;
+    uint32_t width;
+    uint32_t height;
+} Display;
+typedef struct {
+    void* next;
+    CHAR16* name;
+    uint64_t size;
+    uint8_t* data;
+} File;
+typedef struct {
+    void* next;
+    void* pointer;
+} PointerArray;
+typedef struct {
+    void* next;
+    CHAR16* name;
+    uint8_t id;
+} Syscall;
+uint64_t* blitTo = NULL;
+uint64_t* blitFrom = NULL;
+uint64_t blitSize = 0;
+typedef struct
+{
     void* next;
     uint8_t id;
 } Event;
@@ -75,6 +99,8 @@ void debug(const char* string)
         while ((inb(0x3ED) & 0x20) == 0);
         outb(0x3E8, *string++);
     }
+    while ((inb(0x3ED) & 0x20) == 0);
+    outb(0x3E8, '\n');
     #endif
 }
 
@@ -94,6 +120,22 @@ void getTime(uint8_t* hour, uint8_t* minute)
     outb(0x70, 0x02);
     *minute = inb(0x71);
     *minute = (*minute >> 4) * 10 + (*minute & 0x0F);
+}
+
+void sound(uint32_t frequency)
+{
+    if (frequency > 0)
+    {
+        outb(0x43, 0xB6);
+        uint32_t division = 1193180 / frequency;
+        outb(0x42, division);
+        outb(0x42, division >> 8);
+        outb(0x61, inb(0x61) | 0b11);
+    }
+    else
+    {
+        outb(0x61, inb(0x61) & 0b11111101);
+    }
 }
 
 void readBitmap(uint8_t* bitmap, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)
@@ -118,7 +160,7 @@ void* addItem(void** list, uint64_t size)
 {
     while (*list)
     {
-        list = *list;
+        list = (void**)*list;
     }
     *list = allocate(size);
     **(void***)list = NULL;
@@ -129,7 +171,7 @@ void removeItem(void** list, void* item)
 {
     while (*list != item)
     {
-        list = *list;
+        list = (void**)*list;
     }
     unallocate(*list);
     *list = **(void***)list;
@@ -145,12 +187,12 @@ void moveItemEnd(void** list, void* item)
 {
     while (*list != item)
     {
-        list = *list;
+        list = (void**)*list;
     }
     *list = *(void**)item;
     while (*list)
     {
-        list = *list;
+        list = (void**)*list;
     }
     *list = item;
     *(void**)item = NULL;
@@ -189,7 +231,6 @@ void splitTask(void (*task)(uint64_t id), uint64_t count)
     }
 }
 
-
 void initGraphics(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer, uint32_t pitch, uint8_t* font)
 {
     graphicsBuffer = buffer;
@@ -204,6 +245,14 @@ void blit(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* source, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* 
     for (uint64_t i = 0; i < (width * height) / 2; i++)
     {
         *to++ = *from++;
+    }
+}
+
+void coreBlit(uint64_t id)
+{
+    for (uint64_t i = 0; i < blitSize; i++)
+    {
+        blitTo[i + blitSize * id] = blitFrom[i + blitSize * id];
     }
 }
 

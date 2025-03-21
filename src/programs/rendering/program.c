@@ -1,4 +1,5 @@
 #include "../../program.h"
+#include "../desktop/desktop.h"
 
 uint64_t cores = 0;
 Window* window = NULL;
@@ -103,6 +104,7 @@ uint64_t lastKey = UINT64_MAX;
 
 void _start()
 {
+    initialiseDesktopCalls();
     cores = getCores();
     texture = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     readBitmap(readFile(L"programs/rendering/wall.bmp", NULL), texture);
@@ -229,11 +231,13 @@ void update(uint64_t ticks)
         switch (event->id)
         {
             case 0:
+                sound(0);
                 unallocate(distances);
                 unallocateWindow(window);
                 unallocate(texture);
                 unallocate(sprite);
                 quit();
+                return;
                 break;
             case 1:
                 switch (((KeyEvent*)event)->scancode)
@@ -355,14 +359,11 @@ void update(uint64_t ticks)
     }
     if (lastKey != key)
     {
-        if (frequencies[key] > 0)
-        {
-            sound(frequencies[key], durations[key]);
-        }
+        sound(frequencies[key]);
         lastKey = key;
     }
     waiting += ticks;
-    if (waiting >= durations[key] + 10)
+    if (waiting >= durations[key])
     {
         waiting = 0;
         key++;

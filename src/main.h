@@ -1,7 +1,5 @@
 #include "shared.h"
 
-extern void syscallHandler();
-
 uint64_t memorySize = 0;
 uint64_t memory = 0;
 typedef struct
@@ -13,7 +11,6 @@ typedef struct
 Allocation* allocated = NULL;
 uint64_t allocations = 0;
 EFI_GRAPHICS_OUTPUT_PROTOCOL* GOP = NULL;
-EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 struct
 {
     uint16_t lower;
@@ -37,12 +34,6 @@ uint8_t mouseCycle = 1;
 uint8_t mouseBytes[3];
 BOOLEAN lastLeftClick = FALSE;
 BOOLEAN lastRightClick = FALSE;
-typedef struct {
-    void* next;
-    CHAR16* name;
-    uint64_t size;
-    uint8_t* data;
-} File;
 File* files = NULL;
 typedef struct
 {
@@ -139,12 +130,12 @@ void unallocate(void* pointer)
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
-    debug("\n\nSetting up OS\nLocating GOP protocol\n");
+    debug("Locating GOP protocol");
     LibLocateProtocol(&GraphicsOutputProtocol, (void**)&GOP);
-    debug("Resetting GOP\n");
+    debug("Resetting GOP");
     uefi_call_wrapper(GOP->SetMode, 2, GOP, 0);
     uefi_call_wrapper(ST->ConOut->SetCursorPosition, 3, ST->ConOut, 0, 0);
-    debug("Displaying resolution prompt\n\n");
+    debug("Displaying resolution prompt");
     Print(L"Use the up and down arrow keys to move.\nPress enter to select and boot using the selected resolution.\n\nPlease select a resolution:\n");
     for (uint32_t i = 0; i < GOP->Mode->MaxMode; i++)
     {
@@ -153,9 +144,9 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         uefi_call_wrapper(GOP->QueryMode, 4, GOP, i, &size, &info);
         Print(L"%dx%d\n", info->HorizontalResolution, info->VerticalResolution);
     }
-    debug("Disabling watchdog timer\n");
+    debug("Disabling watchdog timer");
     uefi_call_wrapper(BS->SetWatchdogTimer, 4, 0, 0, 0, NULL);
-    debug("Waiting for user to choose resolution\n");
+    debug("Waiting for user to choose resolution");
     uint32_t selected = 0;
     EFI_INPUT_KEY pressed;
     pressed.ScanCode = 1;
@@ -180,36 +171,36 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
         WaitForSingleEvent(ST->ConIn->WaitForKey, 0);
         uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, &pressed);
     }
-    debug("Switching GOP mode\n");
+    debug("Switching GOP mode");
     uefi_call_wrapper(GOP->SetMode, 2, GOP, selected);
-    debug("Searching tables\n");
+    debug("Searching tables");
     EFI_GUID guid = ACPI_20_TABLE_GUID;
     for (uint64_t i = 0; i < ST->NumberOfTableEntries; i++)
     {
         if (CompareGuid(&ST->ConfigurationTable[i].VendorGuid, &guid) == 0)
         {
-            debug("Found ACPI 2.0 table\n");
+            debug("Found ACPI 2.0 table");
             Xsdt* xsdt = *(Xsdt**)(ST->ConfigurationTable[i].VendorTable + 24);
-            debug("Searching ACPI tables\n");
+            debug("Searching ACPI tables");
             for (uint32_t table = 0; table < (xsdt->header.length - sizeof(AcpiSdtHeader)) / sizeof(AcpiSdtHeader*); table++)
             {
                 if (strncmpa(xsdt->entries[table]->signature, "HPET", 4) == 0)
                 {
-                    debug("Found HPET\n");
+                    debug("Found HPET");
                     hpetAddress = ((Hpet*)xsdt->entries[table])->address;
                 }
                 else if (strncmpa(xsdt->entries[table]->signature, "APIC", 4) == 0)
                 {
-                    debug("Found APIC table\n");
+                    debug("Found APIC table");
                     apicAddress = ((Madt*)xsdt->entries[table])->address;
                     uint8_t bsp = *(uint32_t*)(apicAddress + 0x20) >> 24;
                     uint8_t* record = ((uint8_t*)xsdt->entries[table]) + 44;
-                    debug("Searching for cpu cores\n");
+                    debug("Searching for cpu cores");
                     while ((uint64_t)record - (uint64_t)xsdt->entries[table] != xsdt->entries[table]->length)
                     {
                         if (*record == 0 && *(record + 3) != bsp)
                         {
-                            debug("Found core\n");
+                            debug("Found core");
                             cpuCount++;
                         }
                         record += *(record + 1);
@@ -217,7 +208,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
                     cpus = AllocatePool(cpuCount);
                     record = ((uint8_t*)xsdt->entries[table]) + 44;
                     uint64_t cpu = 0;
-                    debug("Saving core IDs\n");
+                    debug("Saving core IDs");
                     while ((uint64_t)record - (uint64_t)xsdt->entries[table] != xsdt->entries[table]->length)
                     {
                         if (*record == 0 && *(record + 3) != bsp)
@@ -232,13 +223,13 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
             break;
         }
     }
-    debug("Locating LIP protocol\n");
+    debug("Locating LIP protocol");
     EFI_LOADED_IMAGE* image = NULL;
     uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
-    debug("Opening root file system\n");
+    debug("Opening root file system");
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
     EFI_FILE_HANDLE file = NULL;
-    debug("Loading system\\smp.bin\n");
+    debug("Loading system/smp.bin");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"system\\smp.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     EFI_FILE_INFO* info = LibFileInfo(file);
     uint64_t smpSize = info->FileSize;
@@ -246,35 +237,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* smp = AllocatePool(smpSize);
     uefi_call_wrapper(file->Read, 3, file, &smpSize, smp);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading wallpapers\\wallpaper.bmp\n");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"wallpapers\\wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t wallpaperSize = info->FileSize;
-    FreePool(info);
-    uint8_t* wallpaperFile = AllocatePool(wallpaperSize);
-    uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaperFile);
-    uefi_call_wrapper(file->Close, 1, file);
-    wallpaper = AllocatePool(GOP->Mode->FrameBufferSize);
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
-    uint8_t* fileBuffer = wallpaperFile + 0x36;
-    int32_t width = *(int32_t*)(wallpaperFile + 0x12);
-    int32_t height = *(int32_t*)(wallpaperFile + 0x16);
-    debug("Fitting wallpaper to screen\n");
-    for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution; y++)
-    {
-        for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution; x++)
-        {
-            uint32_t newX = width * (x / (float)GOP->Mode->Info->HorizontalResolution);
-            uint32_t newY = height * (y / (float)GOP->Mode->Info->VerticalResolution);
-            uint64_t index = ((height - newY - 1) * width + newX) * 3;
-            buffer->Blue = fileBuffer[index];
-            buffer->Green = fileBuffer[index + 1];
-            buffer->Red = fileBuffer[index + 2];
-            buffer++;
-        }
-    }
-    FreePool(wallpaperFile);
-    debug("Loading fonts/font.psf\n");
+    debug("Loading fonts/font.psf");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"fonts\\font.psf", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t fontSize = info->FileSize;
@@ -282,7 +245,23 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* font = AllocatePool(fontSize);
     uefi_call_wrapper(file->Read, 3, file, &fontSize, font);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/program.bin\n");
+    debug("Loading programs/desktop/program.bin");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t desktopSize = info->FileSize;
+    FreePool(info);
+    uint8_t* desktop = AllocatePool(desktopSize);
+    uefi_call_wrapper(file->Read, 3, file, &desktopSize, desktop);
+    uefi_call_wrapper(file->Close, 1, file);
+    debug("Loading programs/desktop/wallpaper.bmp");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t wallpaperSize = info->FileSize;
+    FreePool(info);
+    uint8_t* wallpaper = AllocatePool(wallpaperSize);
+    uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaper);
+    uefi_call_wrapper(file->Close, 1, file);
+    debug("Loading programs/rendering/program.bin");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t renderingSize = info->FileSize;
@@ -290,15 +269,15 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* rendering = AllocatePool(renderingSize);
     uefi_call_wrapper(file->Read, 3, file, &renderingSize, rendering);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/program.bmp\n");
+    debug("Loading programs/rendering/program.bmp");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\program.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
-    uint64_t bmpSize = info->FileSize;
+    uint64_t renderingBmpSize = info->FileSize;
     FreePool(info);
-    uint8_t* bmp = AllocatePool(bmpSize);
-    uefi_call_wrapper(file->Read, 3, file, &bmpSize, bmp);
+    uint8_t* renderingBmp = AllocatePool(renderingBmpSize);
+    uefi_call_wrapper(file->Read, 3, file, &renderingBmpSize, renderingBmp);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/wall.bmp\n");
+    debug("Loading programs/rendering/wall.bmp");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\wall.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t wallSize = info->FileSize;
@@ -306,7 +285,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* wall = AllocatePool(wallSize);
     uefi_call_wrapper(file->Read, 3, file, &wallSize, wall);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/sprite.bmp\n");
+    debug("Loading programs/rendering/sprite.bmp");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\sprite.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t spriteSize = info->FileSize;
@@ -318,7 +297,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     UINTN key;
     UINTN size;
     UINT32 version;
-    debug("Reading memory map\n");
+    debug("Reading memory map");
     uint8_t* map = (uint8_t*)LibMemoryMap(&entries, &key, &size, &version);
     for (UINTN i = 0; i < entries; i++)
     {
@@ -334,51 +313,61 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
             }
         }
     }
-    debug("Exiting boot services\n");
+    debug("Exiting boot services");
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
-    debug("Adding system/smp.bin\n");
+    debug("Adding system/smp.bin");
     File* newFile = addItem((void**)&files, sizeof(File));
     newFile->name = L"system/smp.bin";
     newFile->size = smpSize;
     newFile->data = smp;
-    debug("Adding fonts/font.psf\n");
+    debug("Adding fonts/font.psf");
     newFile = addItem((void**)&files, sizeof(File));
     newFile->name = L"fonts/font.psf";
     newFile->size = fontSize;
     newFile->data = font;
-    debug("Adding programs/rendering/program.bin\n");
+    debug("Adding programs/desktop/program.bin");
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/desktop/program.bin";
+    newFile->size = desktopSize;
+    newFile->data = desktop;
+    debug("Adding programs/desktop/wallpaper.bmp");
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"programs/desktop/wallpaper.bmp";
+    newFile->size = wallpaperSize;
+    newFile->data = wallpaper;
+    debug("Adding programs/rendering/program.bin");
     newFile = addItem((void**)&files, sizeof(File));
     newFile->name = L"programs/rendering/program.bin";
     newFile->size = renderingSize;
     newFile->data = rendering;
-    debug("Adding programs/rendering/program.bmp\n");
+    debug("Adding programs/rendering/program.bmp");
     newFile = addItem((void**)&files, sizeof(File));
     newFile->name = L"programs/rendering/program.bmp";
-    newFile->size = bmpSize;
-    newFile->data = bmp;
-    debug("Adding programs/rendering/wall.bmp\n");
+    newFile->size = renderingBmpSize;
+    newFile->data = renderingBmp;
+    debug("Adding programs/rendering/wall.bmp");
     newFile = addItem((void**)&files, sizeof(File));
     newFile->name = L"programs/rendering/wall.bmp";
     newFile->size = wallSize;
     newFile->data = wall;
-    debug("Adding programs/rendering/sprite.bmp\n");
+    debug("Adding programs/rendering/sprite.bmp");
     newFile = addItem((void**)&files, sizeof(File));
     newFile->name = L"programs/rendering/sprite.bmp";
     newFile->size = spriteSize;
     newFile->data = sprite;
-    debug("Setting up GDT\n");
+    debug("Setting up GDT");
     uint64_t gdt[3];
     gdt[0] = 0x0000000000000000;
     gdt[1] = 0x00209A0000000000;
     gdt[2] = 0x0000920000000000;
-    debug("Setting up GDTR\n");
+    debug("Setting up GDTR");
     struct {
         uint16_t length;
         uint64_t base;
     } __attribute__((packed)) gdtr;
     gdtr.length = 23;
     gdtr.base = (uint64_t)gdt;
-    debug("Loading GDT\n");
+    debug("Loading GDT");
     __asm__ volatile ("lgdt %0" : : "m"(gdtr));
     __asm__ ("pushq $0x08; leaq completed(%rip), %rax; pushq %rax; retfq");
     return EFI_SUCCESS;
@@ -440,16 +429,6 @@ void deleteFile(const CHAR16* name)
     }
 }
 
-void sound(uint32_t frequency, uint64_t milliseconds)
-{
-    soundDuration = milliseconds;
-    outb(0x43, 0xB6);
-    uint32_t division = 1193180 / frequency;
-    outb(0x42, division);
-    outb(0x42, division >> 8);
-    outb(0x61, inb(0x61) | 0b11);
-}
-
 void unmaskInterrupt(uint8_t interrupt)
 {
     if (interrupt < 8)
@@ -491,14 +470,7 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
     drawString(characters, x + 368, GOP->Mode->Info->VerticalResolution / 2 - 32, white);
     for (uint64_t i = 0; i < strlena(lastDebug) + 1; i++)
     {
-        if (lastDebug[i] != '\n')
-        {
-            characters[i] = lastDebug[i];
-        }
-        else
-        {
-            characters[i] = L' ';
-        }
+        characters[i] = lastDebug[i];
     }
     x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 20) * 8;
     drawString(L"Last debug message:", x, GOP->Mode->Info->VerticalResolution / 2, white);
@@ -523,14 +495,7 @@ __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_
     drawString(characters, x + 224, GOP->Mode->Info->VerticalResolution / 2 - 16, white);
     for (uint64_t i = 0; i < strlena(lastDebug) + 1; i++)
     {
-        if (lastDebug[i] != '\n')
-        {
-            characters[i] = lastDebug[i];
-        }
-        else
-        {
-            characters[i] = L' ';
-        }
+        characters[i] = lastDebug[i];
     }
     x = GOP->Mode->Info->HorizontalResolution / 2 - (StrLen(characters) + 20) * 8;
     drawString(L"Last debug message:", x, GOP->Mode->Info->VerticalResolution / 2 + 16, white);
@@ -700,14 +665,6 @@ __attribute__((interrupt, target("general-regs-only"))) void isr31(InterruptFram
 __attribute__((interrupt, target("general-regs-only"))) void hpet(InterruptFrame* frame)
 {
     hpetCounter++;
-    if (soundDuration > 0)
-    {
-        soundDuration--;
-        if (soundDuration == 0)
-        {
-            outb(0x61, inb(0x61) & 0b11111101);
-        }
-    }
     outb(0x20, 0x20);
 }
 
@@ -759,14 +716,19 @@ __attribute__((interrupt, target("general-regs-only"))) void mouse(InterruptFram
     outb(0x20, 0x20);
 }
 
-uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4);
+__attribute__((naked)) void syscallHandler()
+{
+    __asm__ volatile ("cld; call syscallHandle; iretq");
+}
+
+uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5);
 
 void start();
 
 void completed()
 {
     __asm__ volatile ("movw $0x10, %ax; movw %ax, %ds; movw %ax, %es; movw %ax, %fs; movw %ax, %gs; movw %ax, %ss");
-    debug("Initialising PICs\n");
+    debug("Initialising PICs");
     outb(0x20, 0x11);
     outb(0xA0, 0x11);
     outb(0x21, 0x20);
@@ -777,7 +739,7 @@ void completed()
     outb(0xA1, 0x01);
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
-    debug("Setting up exception handlers\n");
+    debug("Setting up exception handlers");
     installInterrupt(0, isr0, FALSE);
     installInterrupt(1, isr1, FALSE);
     installInterrupt(2, isr2, FALSE);
@@ -810,33 +772,33 @@ void completed()
     installInterrupt(29, isr29, FALSE);
     installInterrupt(30, isr30, FALSE);
     installInterrupt(31, isr31, FALSE);
-    debug("Adding HPET to IDT\n");
+    debug("Adding HPET to IDT");
     installInterrupt(0, hpet, TRUE);
-    debug("Adding PS/2 keyboard to IDT\n");
+    debug("Adding PS/2 keyboard to IDT");
     installInterrupt(1, keyboard, TRUE);
-    debug("Unmasking second PIC\n");
+    debug("Unmasking second PIC");
     unmaskInterrupt(2);
-    debug("Adding PS/2 mouse to IDT\n");
+    debug("Adding PS/2 mouse to IDT");
     installInterrupt(12, mouse, TRUE);
-    debug("Adding syscall to IDT\n");
+    debug("Adding syscall to IDT");
     installInterrupt(0x80, syscallHandler, FALSE);
-    debug("Setting up IDTR\n");
+    debug("Setting up IDTR");
     struct {
         uint16_t length;
         uint64_t base;
     } __attribute__((packed)) idtr;
     idtr.length = 4095;
     idtr.base = (uint64_t)idt;
-    debug("Loading IDT\n");
+    debug("Loading IDT");
     __asm__ volatile ("lidt %0" : : "m"(idtr));
-    debug("Enabling interrupts\n");
+    debug("Enabling interrupts");
     __asm__ volatile ("sti");
-    debug("Initialising HPET\n");
+    debug("Initialising HPET");
     *(uint32_t*)(hpetAddress + 0x10) |= 0b11;
     *(uint32_t*)(hpetAddress + 0x100) |= 0b1100;
     *(uint64_t*)(hpetAddress + 0x108) = (1000000000000000ULL / ((*(uint64_t*)hpetAddress >> 32) & 0xFFFFFFFF)) / 1000;
     *(uint64_t*)(hpetAddress + 0xF0) = 0;
-    debug("Initialising PS/2 mouse\n");
+    debug("Initialising PS/2 mouse");
     outb(0x64, 0xA8);
     outb(0x64, 0x20);
     uint8_t status = inb(0x60) | 2;
@@ -848,7 +810,7 @@ void completed()
     outb(0x64, 0xD4);
     outb(0x60, 0xF4);
     inb(0x60);
-    debug("Identity mapping other cores\n");
+    debug("Identity mapping other cores");
     uint64_t* PML4T = (uint64_t*)0x1000;
     for (uint16_t i = 0; i < 512; i++)
     {
@@ -875,36 +837,36 @@ void completed()
     }
     PDT[0] = (uint64_t)PT | 0b11;
     uint64_t cr3 = 0;
-    debug("Saving default paging\n");
-    __asm__ volatile ("mov %%cr3, %0" : "=r"(cr3));
+    debug("Saving default paging");
+    __asm__ volatile ("mov %%cr3, %0" : "=g"(cr3));
     *(uint64_t*)0x5000 = cr3;
     uint64_t smpSize = 0;
     uint8_t* data = readFile(L"system/smp.bin", &smpSize);
-    debug("Loading core binary\n");
+    debug("Loading core binary");
     copyMemory(data, (uint8_t*)0xF000, smpSize);
     *(uint8_t*)0xEFFF = 0;
-    debug("Initialising cores\n");
+    debug("Initialising cores");
     for (uint64_t i = 0; i < cpuCount; i++)
     {
-        debug("Initialising core\n");
+        debug("Initialising core");
         *(uint64_t*)(0x5008 + i * 8) = (uint64_t)allocate(0x8000) + 0x8000;
         *(uint32_t*)(apicAddress + 0x310) = cpus[i] << 24;
         *(uint32_t*)(apicAddress + 0x300) = 0x4500;
         while (*(uint32_t*)(apicAddress + 0x300) & 0x1000);
     }
-    debug("Starting cores\n");
+    debug("Starting cores");
     for (uint64_t i = 0; i < cpuCount; i++)
     {
-        debug("Starting core\n");
+        debug("Starting core");
         *(uint32_t*)(apicAddress + 0x310) = cpus[i] << 24;
         *(uint32_t*)(apicAddress + 0x300) = 0x460F;
         while (*(uint32_t*)(apicAddress + 0x300) & 0x1000);
         hpetCounter = 0;
         while (hpetCounter < 1);
     }
-    debug("Waiting for cores\n");
+    debug("Waiting for cores");
     while (*(uint8_t*)0xEFFF != cpuCount);
-    debug("Starting OS\n\n");
+    debug("Starting OS");
     start();
     __asm__ volatile ("cli; hlt");
 }

@@ -167,6 +167,14 @@ void* addItem(void** list, uint64_t size)
     return *list;
 }
 
+void* addItemFirst(void** list, uint64_t size)
+{
+    void* newItem = allocate(size);
+    *(void**)newItem = *list;
+    *list = newItem;
+    return newItem;
+}
+
 void removeItem(void** list, void* item)
 {
     while (*list != item)

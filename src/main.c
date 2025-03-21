@@ -30,7 +30,7 @@ void execute(const CHAR16* file)
         }
     }
     debug("Allocating program");
-    Program* program = addItem((void**)&running, sizeof(Program));
+    Program* program = addItemFirst((void**)&running, sizeof(Program));
     program->pid = pid;
     uint64_t size = 0;
     uint8_t* data = readFile(file, &size);

@@ -26,6 +26,8 @@ typedef struct {
 uint64_t* blitTo = NULL;
 uint64_t* blitFrom = NULL;
 uint64_t blitSize = 0;
+uint64_t fillSize = 0;
+uint64_t fillColour = 0;
 typedef struct
 {
     void* next;
@@ -218,13 +220,8 @@ uint64_t listLength(void** list)
     return i - 1;
 }
 
-void splitTask(void (*task)(uint64_t id), uint64_t count)
+void waitForCores(uint64_t count)
 {
-    for (uint64_t i = 0; i < count - 1; i++)
-    {
-        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)task;
-    }
-    task(0);
     while (TRUE)
     {
         uint64_t done = 0;
@@ -237,6 +234,17 @@ void splitTask(void (*task)(uint64_t id), uint64_t count)
             break;
         }
     }
+}
+
+void splitTask(void (*task)(uint64_t id), uint64_t count)
+{
+    waitForCores(count);
+    for (uint64_t i = 0; i < count - 1; i++)
+    {
+        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)task;
+    }
+    task(0);
+    waitForCores(count);
 }
 
 void initGraphics(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer, uint32_t pitch, uint8_t* font)
@@ -278,6 +286,14 @@ void drawRectangle(uint32_t x, uint32_t y, uint32_t width, uint32_t height, EFI_
             *address++ = *(uint64_t*)colours;
         }
         address += drop;
+    }
+}
+
+void coreFill(uint64_t id)
+{
+    for (uint64_t i = 0; i < fillSize; i++)
+    {
+        ((uint64_t*)graphicsBuffer)[i + fillSize * id] = fillColour;
     }
 }
 

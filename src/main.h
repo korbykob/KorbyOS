@@ -229,7 +229,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     debug("Opening root file system");
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
     EFI_FILE_HANDLE file = NULL;
-    debug("Loading system/smp.bin");
+    debug("Loading /system/smp.bin");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"system\\smp.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     EFI_FILE_INFO* info = LibFileInfo(file);
     uint64_t smpSize = info->FileSize;
@@ -237,7 +237,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* smp = AllocatePool(smpSize);
     uefi_call_wrapper(file->Read, 3, file, &smpSize, smp);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading fonts/font.psf");
+    debug("Loading /fonts/font.psf");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"fonts\\font.psf", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t fontSize = info->FileSize;
@@ -245,7 +245,15 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* font = AllocatePool(fontSize);
     uefi_call_wrapper(file->Read, 3, file, &fontSize, font);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/desktop/program.bin");
+    debug("Loading /programs/test/program.bin");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    info = LibFileInfo(file);
+    uint64_t testSize = info->FileSize;
+    FreePool(info);
+    uint8_t* test = AllocatePool(testSize);
+    uefi_call_wrapper(file->Read, 3, file, &testSize, test);
+    uefi_call_wrapper(file->Close, 1, file);
+    debug("Loading /programs/desktop/program.bin");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t desktopSize = info->FileSize;
@@ -253,7 +261,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* desktop = AllocatePool(desktopSize);
     uefi_call_wrapper(file->Read, 3, file, &desktopSize, desktop);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/desktop/wallpaper.bmp");
+    debug("Loading /programs/desktop/wallpaper.bmp");
     uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t wallpaperSize = info->FileSize;
@@ -261,32 +269,32 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uint8_t* wallpaper = AllocatePool(wallpaperSize);
     uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaper);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/program.bin");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    debug("Loading /programs/desktop/taskbar/rendering/program.bin");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t renderingSize = info->FileSize;
     FreePool(info);
     uint8_t* rendering = AllocatePool(renderingSize);
     uefi_call_wrapper(file->Read, 3, file, &renderingSize, rendering);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/program.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\program.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    debug("Loading /programs/desktop/taskbar/rendering/program.bmp");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\program.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t renderingBmpSize = info->FileSize;
     FreePool(info);
     uint8_t* renderingBmp = AllocatePool(renderingBmpSize);
     uefi_call_wrapper(file->Read, 3, file, &renderingBmpSize, renderingBmp);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/wall.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\wall.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    debug("Loading /programs/desktop/taskbar/rendering/wall.bmp");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\wall.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t wallSize = info->FileSize;
     FreePool(info);
     uint8_t* wall = AllocatePool(wallSize);
     uefi_call_wrapper(file->Read, 3, file, &wallSize, wall);
     uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading programs/rendering/sprite.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\rendering\\sprite.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    debug("Loading /programs/desktop/taskbar/rendering/sprite.bmp");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\sprite.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     info = LibFileInfo(file);
     uint64_t spriteSize = info->FileSize;
     FreePool(info);
@@ -317,42 +325,47 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
     debug("Adding system/smp.bin");
     File* newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"system/smp.bin";
+    newFile->name = L"/system/smp.bin";
     newFile->size = smpSize;
     newFile->data = smp;
     debug("Adding fonts/font.psf");
     newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"fonts/font.psf";
+    newFile->name = L"/fonts/font.psf";
     newFile->size = fontSize;
     newFile->data = font;
+    debug("Adding programs/test/program.bin");
+    newFile = addItem((void**)&files, sizeof(File));
+    newFile->name = L"/programs/test/program.bin";
+    newFile->size = testSize;
+    newFile->data = test;
     debug("Adding programs/desktop/program.bin");
     newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/desktop/program.bin";
+    newFile->name = L"/programs/desktop/program.bin";
     newFile->size = desktopSize;
     newFile->data = desktop;
     debug("Adding programs/desktop/wallpaper.bmp");
     newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/desktop/wallpaper.bmp";
+    newFile->name = L"/programs/desktop/wallpaper.bmp";
     newFile->size = wallpaperSize;
     newFile->data = wallpaper;
-    debug("Adding programs/rendering/program.bin");
+    debug("Adding programs/desktop/taskbar/rendering/program.bin");
     newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/rendering/program.bin";
+    newFile->name = L"/programs/desktop/taskbar/rendering/program.bin";
     newFile->size = renderingSize;
     newFile->data = rendering;
-    debug("Adding programs/rendering/program.bmp");
+    debug("Adding programs/desktop/taskbar/rendering/program.bmp");
     newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/rendering/program.bmp";
+    newFile->name = L"/programs/desktop/taskbar/rendering/program.bmp";
     newFile->size = renderingBmpSize;
     newFile->data = renderingBmp;
-    debug("Adding programs/rendering/wall.bmp");
+    debug("Adding programs/desktop/taskbar/rendering/wall.bmp");
     newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/rendering/wall.bmp";
+    newFile->name = L"/programs/desktop/taskbar/rendering/wall.bmp";
     newFile->size = wallSize;
     newFile->data = wall;
-    debug("Adding programs/rendering/sprite.bmp");
+    debug("Adding programs/desktop/taskbar/rendering/sprite.bmp");
     newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"programs/rendering/sprite.bmp";
+    newFile->name = L"/programs/desktop/taskbar/rendering/sprite.bmp";
     newFile->size = spriteSize;
     newFile->data = sprite;
     debug("Setting up GDT");
@@ -414,6 +427,37 @@ uint8_t* readFile(const CHAR16* name, uint64_t* size)
     return NULL;
 }
 
+BOOLEAN checkFile(const CHAR16* name)
+{
+    File* file = (File*)&files;
+    while (iterateList((void**)&file))
+    {
+        if (StrCmp(name, file->name) == 0)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+BOOLEAN checkFolder(const CHAR16* name)
+{
+    uint64_t nameLength = StrLen(name);
+    if (name[nameLength - 1] != L'/')
+    {
+        return FALSE;
+    }
+    File* file = (File*)&files;
+    while (iterateList((void**)&file))
+    {
+        if (StrnCmp(name, file->name, nameLength) == 0)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 void deleteFile(const CHAR16* name)
 {
     File* file = (File*)&files;
@@ -427,6 +471,31 @@ void deleteFile(const CHAR16* name)
             break;
         }
     }
+}
+
+File** getFiles(const CHAR16* root, uint64_t* count)
+{
+    uint64_t length = StrLen(root);
+    File* file = (File*)&files;
+    while (iterateList((void**)&file))
+    {
+        if (StrnCmp(file->name, root, length) == 0)
+        {
+            *count = *count + 1;
+        }
+    }
+    File** items = allocate(*count * sizeof(File*));
+    uint64_t i = 0;
+    file = (File*)&files;
+    while (iterateList((void**)&file))
+    {
+        if (StrnCmp(file->name, root, length) == 0)
+        {
+            items[i] = file;
+            i++;
+        }
+    }
+    return items;
 }
 
 void unmaskInterrupt(uint8_t interrupt)
@@ -841,7 +910,7 @@ void completed()
     __asm__ volatile ("mov %%cr3, %0" : "=g"(cr3));
     *(uint64_t*)0x5000 = cr3;
     uint64_t smpSize = 0;
-    uint8_t* data = readFile(L"system/smp.bin", &smpSize);
+    uint8_t* data = readFile(L"/system/smp.bin", &smpSize);
     debug("Loading core binary");
     copyMemory(data, (uint8_t*)0xF000, smpSize);
     *(uint8_t*)0xEFFF = 0;

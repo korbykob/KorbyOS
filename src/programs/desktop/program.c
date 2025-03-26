@@ -396,34 +396,32 @@ void _start()
 {
     uint64_t count = 0;
     debug("Loading programs");
-    File** files = getFiles(L"programs/", &count);
+    File** files = getFiles(L"/programs/desktop/taskbar/", &count);
     ProgramData* current = NULL;
     for (uint64_t i = 0; i < count; i++)
     {
-        if (StrnCmp(files[i]->name, L"programs/desktop/", 17) != 0)
+        if (StrCmp(files[i]->name + StrLen(files[i]->name) - 4, L".bin") == 0)
         {
-            if (StrCmp(files[i]->name + StrLen(files[i]->name) - 4, L".bin") == 0)
-            {
-                debug("Located binary");
-                current = addItem((void**)&programs, sizeof(ProgramData));
-                current->name = files[i]->name;
-                current->size = files[i]->size;
-                current->data = files[i]->data;
-                programCount++;
-            }
-            else if (current && StrCmp(files[i]->name + StrLen(files[i]->name) - 4, L".bmp") == 0)
-            {
-                debug("Located icon");
-                readBitmap(files[i]->data, current->icon);
-                current = NULL;
-            }
+            debug("Located binary");
+            current = addItem((void**)&programs, sizeof(ProgramData));
+            current->name = files[i]->name;
+            current->size = files[i]->size;
+            current->data = files[i]->data;
+            programCount++;
+        }
+        else if (current && StrCmp(files[i]->name + StrLen(files[i]->name) - 4, L".bmp") == 0)
+        {
+            debug("Located icon");
+            readBitmap(files[i]->data, current->icon);
+            current = NULL;
         }
     }
+    unallocate(files);
     getDisplayInfo(&display);
-    initGraphics(display.buffer, display.width, readFile(L"fonts/font.psf", NULL));
+    initGraphics(display.buffer, display.width, readFile(L"/fonts/font.psf", NULL));
     wallpaper = allocate(display.width * display.height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
-    uint8_t* wallpaperFile = readFile(L"programs/desktop/wallpaper.bmp", NULL);
+    uint8_t* wallpaperFile = readFile(L"/programs/desktop/wallpaper.bmp", NULL);
     uint8_t* fileBuffer = wallpaperFile + 0x36;
     int32_t width = *(int32_t*)(wallpaperFile + 0x12);
     int32_t height = *(int32_t*)(wallpaperFile + 0x16);

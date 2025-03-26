@@ -1,5 +1,4 @@
-#include "../../program.h"
-#include "../desktop/desktop.h"
+#include "../../desktop.h"
 
 uint64_t cores = 0;
 Window* window = NULL;
@@ -107,10 +106,10 @@ void _start()
     initialiseDesktopCalls();
     cores = getCores();
     texture = allocate(64 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    readBitmap(readFile(L"programs/rendering/wall.bmp", NULL), texture);
+    readBitmap(readFile(L"/programs/desktop/taskbar/rendering/wall.bmp", NULL), texture);
     sprite = allocate(384 * 64 * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
-    readBitmap(readFile(L"programs/rendering/sprite.bmp", NULL), sprite);
-    window = allocateWindow(640, 360, L"Game", L"programs/rendering/program.bmp");
+    readBitmap(readFile(L"/programs/desktop/taskbar/rendering/sprite.bmp", NULL), sprite);
+    window = allocateWindow(640, 360, L"Game", L"/programs/desktop/taskbar/rendering/program.bmp");
     window->mouseMode = 2;
     distances = allocate(window->width * sizeof(double));
 }

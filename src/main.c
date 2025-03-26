@@ -1,5 +1,83 @@
 #include "main.h"
 
+uint32_t terminalWidth = 0;
+uint32_t terminalHeight = 0;
+uint32_t cursorX = 0;
+uint32_t cursorY = 0;
+BOOLEAN typing = FALSE;
+uint32_t typingStart = 0;
+CHAR16* typingBuffer = NULL;
+uint64_t typingCurrent = 0;
+uint64_t terminalPid = UINT64_MAX;
+CHAR16* terminalDirectory = NULL;
+BOOLEAN leftShift = FALSE;
+BOOLEAN rightShift = FALSE;
+BOOLEAN shift = FALSE;
+BOOLEAN caps = FALSE;
+char scancodes[] = {
+    0, 0, '1', '2', '3', '4', '5', '6', '7', '8', /* 9 */
+    '9', '0', '-', '=', 0, /* Backspace */
+    0, /* Tab */
+    'q', 'w', 'e', 'r', /* 19 */
+    't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0, /* Enter key */
+    0, /* 29 - Control */
+    'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', /* 39 */
+    '\'', '`',  0, /* Left shift */
+    '\\', 'z', 'x', 'c', 'v', 'b', 'n', /* 49 */
+    'm', ',', '.', '/', 0, /* Right shift */
+    '*', 0, /* Alt */
+    ' ', /* Space bar */
+    0, /* Caps lock */
+    0, /* 59 - F1 key ... > */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, /* < ... F10 */
+    0, /* 69 - Num lock */
+    0, /* Scroll Lock */
+    0, /* Home key */
+    0, /* Up Arrow */
+    0, /* Page Up */
+    '-', 0, /* Left Arrow */
+    0, 0, /* Right Arrow */
+    '+', 0, /* 79 - End key */
+    0, /* Down Arrow */
+    0, /* Page Down */
+    0, /* Insert Key */
+    0, /* Delete Key */
+    0, 0, 0, 0, /* F11 Key */
+    0, /* F12 Key */
+    0 /* All other keys are undefined */
+};
+char capsScancodes[] = {
+    0, 0, '!', '@', '#', '$', '%', '^', '&', '*', /* 9 */
+    '(', ')', '_', '+', 0, /* Backspace */
+    0, /* Tab */
+    'Q', 'W', 'E', 'R', /* 19 */
+    'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', 0, /* Enter key */
+    0, /* 29 - Control */
+    'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', /* 39 */
+    '"', '~',  0, /* Left shift */
+    '|', 'Z', 'X', 'C', 'V', 'B', 'N', /* 49 */
+    'M', '<', '>', '?', 0, /* Right shift */
+    '*', 0, /* Alt */
+    ' ', /* Space bar */
+    0, /* Caps lock */
+    0, /* 59 - F1 key ... > */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, /* < ... F10 */
+    0, /* 69 - Num lock */
+    0, /* Scroll Lock */
+    0, /* Home key */
+    0, /* Up Arrow */
+    0, /* Page Up */
+    '-', 0, /* Left Arrow */
+    0, 0, /* Right Arrow */
+    '+', 0, /* 79 - End key */
+    0, /* Down Arrow */
+    0, /* Page Down */
+    0, /* Insert Key */
+    0, /* Delete Key */
+    0, 0, 0, 0, /* F11 Key */
+    0, /* F12 Key */
+    0 /* All other keys are undefined */
+};
 typedef struct
 {
     void* next;
@@ -16,7 +94,7 @@ Syscall* syscallIds = NULL;
 uint64_t (*syscallHandlers[256])(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4);
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
 
-void execute(const CHAR16* file)
+uint64_t execute(const CHAR16* file)
 {
     debug("Executing program");
     uint64_t pid = 0;
@@ -44,6 +122,7 @@ void execute(const CHAR16* file)
     program->start();
     currentProgram = oldProgram;
     debug("Program executed");
+    return pid;
 }
 
 void quit()
@@ -52,32 +131,6 @@ void quit()
     unallocate(currentProgram->start);
     removeItem((void**)&running, currentProgram);
     debug("Exited program");
-}
-
-File** getFiles(const CHAR16* root, uint64_t* count)
-{
-    debug("Getting files");
-    File* file = (File*)&files;
-    while (iterateList((void**)&file))
-    {
-        if (StrnCmp(file->name, root, 9) == 0)
-        {
-            *count = *count + 1;
-        }
-    }
-    File** items = allocate(*count * sizeof(File*));
-    uint64_t i = 0;
-    file = (File*)&files;
-    while (iterateList((void**)&file))
-    {
-        if (StrnCmp(file->name, root, 9) == 0)
-        {
-            items[i] = file;
-            i++;
-        }
-    }
-    debug("Got files");
-    return items;
 }
 
 PointerArray* addKeyCall(void (*keyCall)(uint8_t scancode, BOOLEAN pressed))
@@ -193,12 +246,66 @@ void getDisplayInfo(Display* display)
     debug("Got display info");
 }
 
+void coreDrop(uint64_t id)
+{
+    for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution - 32; y++)
+    {
+        for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution / (cpuCount + 1); x++)
+        {
+            uint32_t newX = x + id * (GOP->Mode->Info->HorizontalResolution / (cpuCount + 1));
+            videoBuffer[y * GOP->Mode->Info->HorizontalResolution + newX] = videoBuffer[(y + 32) * GOP->Mode->Info->HorizontalResolution + newX];
+        }
+    }
+}
+
+void print(const CHAR16* message)
+{
+    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, black);
+    uint64_t length = StrLen(message);
+    for (uint64_t i = 0; i < length; i++)
+    {
+        if (*message != L'\n')
+        {
+            drawCharacter(*message, cursorX * 16, cursorY * 32, white);
+            cursorX++;
+            if (cursorX == terminalWidth)
+            {
+                cursorX = 0;
+                if (cursorY + 1 != terminalHeight)
+                {
+                    cursorY++;
+                }
+                else
+                {
+                    splitTask(coreDrop, cpuCount + 1);
+                    drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, black);
+                }
+            }
+        }
+        else
+        {
+            cursorX = 0;
+            if (cursorY + 1 != terminalHeight)
+            {
+                cursorY++;
+            }
+            else
+            {
+                splitTask(coreDrop, cpuCount + 1);
+                drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, black);
+            }
+        }
+        message++;
+    }
+    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, white);
+}
+
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5)
 {
     switch (code)
     {
         case 0:
-            execute((const CHAR16*)arg1);
+            return execute((const CHAR16*)arg1);
             break;
         case 1:
             quit();
@@ -216,43 +323,52 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return (uint64_t)readFile((const CHAR16*)arg1, (uint64_t*)arg2);
             break;
         case 6:
-            deleteFile((const CHAR16*)arg1);
+            return (uint64_t)checkFile((const CHAR16*)arg1);
             break;
         case 7:
-            return (uint64_t)getFiles((const CHAR16*)arg1, (uint64_t*)arg2);
+            return (uint64_t)checkFolder((const CHAR16*)arg1);
             break;
         case 8:
-            return cpuCount + 1;
+            deleteFile((const CHAR16*)arg1);
             break;
         case 9:
-            return (uint64_t)addKeyCall((void (*)(uint8_t scancode, BOOLEAN pressed))arg1);
+            return (uint64_t)getFiles((const CHAR16*)arg1, (uint64_t*)arg2);
             break;
         case 10:
-            removeKeyCall((PointerArray*)arg1);
+            return cpuCount + 1;
             break;
         case 11:
-            return (uint64_t)addMoveCall((void (*)(int16_t x, int16_t y))arg1);
+            return (uint64_t)addKeyCall((void (*)(uint8_t scancode, BOOLEAN pressed))arg1);
             break;
         case 12:
-            removeMoveCall((PointerArray*)arg1);
+            removeKeyCall((PointerArray*)arg1);
             break;
         case 13:
-            return (uint64_t)addClickCall((void (*)(BOOLEAN left, BOOLEAN pressed))arg1);
+            return (uint64_t)addMoveCall((void (*)(int16_t x, int16_t y))arg1);
             break;
         case 14:
-            removeClickCall((PointerArray*)arg1);
+            removeMoveCall((PointerArray*)arg1);
             break;
         case 15:
-            return (uint64_t)registerSyscallHandler((const CHAR16*)arg1, (uint64_t (*)(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4))arg2);
+            return (uint64_t)addClickCall((void (*)(BOOLEAN left, BOOLEAN pressed))arg1);
             break;
         case 16:
-            return (uint64_t)getRegisteredSyscall((const CHAR16*)arg1);
+            removeClickCall((PointerArray*)arg1);
             break;
         case 17:
-            unregisterSyscallHandler((const CHAR16*)arg1);
+            return (uint64_t)registerSyscallHandler((const CHAR16*)arg1, (uint64_t (*)(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4))arg2);
             break;
         case 18:
+            return (uint64_t)getRegisteredSyscall((const CHAR16*)arg1);
+            break;
+        case 19:
+            unregisterSyscallHandler((const CHAR16*)arg1);
+            break;
+        case 20:
             getDisplayInfo((Display*)arg1);
+            break;
+        case 21:
+            print((const CHAR16*)arg1);
             break;
         default:
             return syscallHandlers[code](arg1, arg2, arg3, arg4, arg5);
@@ -263,6 +379,66 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
 
 void keyPress(uint8_t scancode, BOOLEAN pressed)
 {
+    if (typing)
+    {
+        switch (scancode)
+        {
+            case 14:
+                if (pressed && cursorX + cursorY * terminalWidth > typingStart)
+                {
+                    typingCurrent--;
+                    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, black);
+                    if (cursorX > 0)
+                    {
+                        cursorX--;
+                    }
+                    else
+                    {
+                        cursorX = terminalWidth - 1;
+                        cursorY--;
+                    }
+                    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, white);
+                }
+                break;
+            case 28:
+                if (pressed)
+                {
+                    typingBuffer[typingCurrent] = L'\0';
+                    print(L"\n");
+                    typing = FALSE;
+                }
+                break;
+            case 42:
+                leftShift = pressed;
+                shift = leftShift || rightShift;
+                break;
+            case 54:
+                rightShift = pressed;
+                shift = leftShift || rightShift;
+                break;
+            case 58:
+                if (pressed)
+                {
+                    caps = !caps;
+                }
+                break;
+            default:
+                if (pressed)
+                {
+                    char character = (caps ? !shift : shift) ? capsScancodes[scancode] : scancodes[scancode];
+                    if (character)
+                    {
+                        typingBuffer[typingCurrent] = character;
+                        typingCurrent++;
+                        CHAR16 message[2];
+                        message[0] = character;
+                        message[1] = L'\0';
+                        print(message);
+                    }
+                }
+                break;
+        }
+    }
     PointerArray* call = (PointerArray*)&keyCalls;
     while (iterateList((void**)&call))
     {
@@ -291,22 +467,91 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 void start()
 {
     debug("Filling syscall handlers");
-    for (uint8_t i = 0; i < 19; i++)
+    for (uint8_t i = 0; i < 22; i++)
     {
         syscallHandlers[i] = (void*)1;
     }
     debug("Allocating video buffer");
     videoBuffer = allocate(GOP->Mode->FrameBufferSize);
+    ZeroMem(videoBuffer, GOP->Mode->FrameBufferSize);
+    initGraphics(videoBuffer, GOP->Mode->Info->HorizontalResolution, readFile(L"/fonts/font.psf", NULL));
+    debug("Setting up terminal");
+    terminalWidth = GOP->Mode->Info->HorizontalResolution / 16;
+    terminalHeight = GOP->Mode->Info->VerticalResolution / 32;
+    debug("Allocating execution buffer");
+    terminalDirectory = allocate(4);
+    terminalDirectory[0] = L'/';
+    terminalDirectory[1] = L'\0';
+    debug("Allocating input buffer");
+    typingBuffer = allocate(128 * 2);
+    typingBuffer[0] = L'\0';
     uint64_t ticks = 0;
     debug("Starting loop");
-    execute(L"programs/desktop/program.bin");
     while (TRUE)
     {
+        if (!typing && terminalPid == UINT64_MAX)
+        {
+            if (StrLen(typingBuffer) > 0)
+            {
+                uint64_t directoryLength = StrLen(terminalDirectory);
+                uint64_t executeLength = directoryLength + StrLen(typingBuffer);
+                CHAR16* executeString = allocate((executeLength + 1) * 2);
+                StrCpy(executeString, terminalDirectory);
+                StrCpy(executeString + directoryLength, typingBuffer);
+                if (checkFile(executeString))
+                {
+                    terminalPid = execute(executeString);
+                }
+                else if (checkFolder(executeString))
+                {
+                    unallocate(terminalDirectory);
+                    uint64_t directoryLength = StrLen(executeString);
+                    terminalDirectory = allocate((directoryLength + 1) * 2);
+                    StrCpy(terminalDirectory, executeString);
+                }
+                else if (StrCmp(typingBuffer, L"clear") == 0)
+                {
+                    fillColour = 0x0;
+                    fillSize = (GOP->Mode->Info->HorizontalResolution * GOP->Mode->Info->VerticalResolution / 2) / (cpuCount + 1);
+                    splitTask(coreFill, cpuCount + 1);
+                    cursorX = 0;
+                    cursorY = 0;
+                }
+                else if (StrCmp(typingBuffer, L"dir") == 0)
+                {
+                    uint64_t count = 0;
+                    File** files = getFiles(terminalDirectory, &count);
+                    for (uint64_t i = 0; i < count; i++)
+                    {
+                        print(files[i]->name);
+                        print(L"\n");
+                    }
+                }
+                else
+                {
+                    print(L"Command or executable file not found\n");
+                }
+                unallocate(executeString);
+            }
+        }
+        BOOLEAN found = FALSE;
         Program* program = (Program*)&running;
         while (iterateList((void**)&program))
         {
+            if (program->pid == terminalPid)
+            {
+                found = TRUE;
+            }
             currentProgram = program;
             program->update(ticks);
+        }
+        if (!typing && !found)
+        {
+            terminalPid = UINT64_MAX;
+            print(terminalDirectory);
+            typingStart = cursorX + cursorY * terminalWidth;
+            typingCurrent = 0;
+            typing = TRUE;
         }
         blitTo = (uint64_t*)GOP->Mode->FrameBufferBase;
         blitFrom = (uint64_t*)videoBuffer;

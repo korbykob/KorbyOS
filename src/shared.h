@@ -69,6 +69,7 @@ typedef struct
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* graphicsBuffer = NULL;
 uint32_t graphicsPitch = 0;
 uint8_t* graphicsFont = NULL;
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL normal = { 152, 152, 152 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };

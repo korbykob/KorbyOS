@@ -266,7 +266,7 @@ void print(const CHAR16* message)
     {
         if (*message != L'\n')
         {
-            drawCharacter(*message, cursorX * 16, cursorY * 32, white);
+            drawCharacter(*message, cursorX * 16, cursorY * 32, normal);
             cursorX++;
             if (cursorX == terminalWidth)
             {
@@ -297,7 +297,7 @@ void print(const CHAR16* message)
         }
         message++;
     }
-    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, white);
+    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5)
@@ -397,7 +397,7 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
                         cursorX = terminalWidth - 1;
                         cursorY--;
                     }
-                    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, white);
+                    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
                 }
                 break;
             case 28:

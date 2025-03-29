@@ -57,10 +57,10 @@ void deleteFile(const CHAR16* name)
     __asm__ volatile ("movq $8, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)name) : "%rdi", "%rsi");
 }
 
-File** getFiles(const CHAR16* root, uint64_t* count)
+File** getFiles(const CHAR16* root, uint64_t* count, BOOLEAN recursive)
 {
     uint64_t result = 0;
-    __asm__ volatile ("movq $9, %%rdi; movq %1, %%rsi; movq %2, %%rdx; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)root), "g"((uint64_t)count) : "%rdi", "%rsi", "%rdx");
+    __asm__ volatile ("movq $9, %%rdi; movq %1, %%rsi; movq %2, %%rdx; movq %3, %%rcx; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)root), "g"((uint64_t)count), "g"((uint64_t)recursive) : "%rdi", "%rsi", "%rdx", "%rcx");
     return (File**)result;
 }
 

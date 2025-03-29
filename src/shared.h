@@ -90,20 +90,16 @@ uint8_t inb(uint16_t port)
     return value;
 }
 
-#define SERIAL_DEBUG
-
 void debug(const char* string)
 {
     lastDebug = string;
-    #ifdef SERIAL_DEBUG
-    while (*string != 0)
+    while (*string)
     {
         while ((inb(0x3ED) & 0x20) == 0);
         outb(0x3E8, *string++);
     }
     while ((inb(0x3ED) & 0x20) == 0);
     outb(0x3E8, '\n');
-    #endif
 }
 
 void copyMemory(uint8_t* source, uint8_t* destination, uint64_t size)
@@ -245,6 +241,19 @@ void splitTask(void (*task)(uint64_t id), uint64_t count)
     }
     task(0);
     waitForCores(count);
+}
+
+BOOLEAN inString(const CHAR16* string, CHAR16 token)
+{
+    while (*string)
+    {
+        if (*string == token)
+        {
+            return TRUE;
+        }
+        string++;
+    }
+    return FALSE;
 }
 
 void initGraphics(EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer, uint32_t pitch, uint8_t* font)

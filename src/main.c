@@ -332,7 +332,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             deleteFile((const CHAR16*)arg1);
             break;
         case 9:
-            return (uint64_t)getFiles((const CHAR16*)arg1, (uint64_t*)arg2);
+            return (uint64_t)getFiles((const CHAR16*)arg1, (uint64_t*)arg2, (BOOLEAN)arg3);
             break;
         case 10:
             return cpuCount + 1;
@@ -520,11 +520,32 @@ void start()
                 else if (StrCmp(typingBuffer, L"dir") == 0)
                 {
                     uint64_t count = 0;
-                    File** files = getFiles(terminalDirectory, &count);
+                    File** files = getFiles(terminalDirectory, &count, FALSE);
+                    uint64_t length = StrLen(terminalDirectory);
                     for (uint64_t i = 0; i < count; i++)
                     {
-                        print(files[i]->name);
+                        print(files[i]->name + length);
                         print(L"\n");
+                    }
+                    unallocate(files);
+                }
+                else if (StrCmp(typingBuffer, L"..") == 0)
+                {
+                    if (terminalDirectory[1] != L'\0')
+                    {
+                        CHAR16* current = terminalDirectory;
+                        uint64_t last = 0;
+                        uint64_t end = 0;
+                        while (*current)
+                        {
+                            end++;
+                            if (*current == L'/' && *(current + 1) != L'\0')
+                            {
+                                last = end;
+                            }
+                            current++;
+                        }
+                        terminalDirectory[last] = L'\0';
                     }
                 }
                 else

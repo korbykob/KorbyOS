@@ -260,8 +260,10 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         }
                         else
                         {
+                            debug("Sending quit event to window");
                             Event* event = addItem((void**)&item->window->events, sizeof(Event));
                             event->id = 0;
+                            debug("Sent quit event to window");
                         }
                         break;
                     }
@@ -396,7 +398,7 @@ void _start()
 {
     uint64_t count = 0;
     debug("Loading programs");
-    File** files = getFiles(L"/programs/desktop/taskbar/", &count);
+    File** files = getFiles(L"/programs/desktop/taskbar/", &count, TRUE);
     ProgramData* current = NULL;
     for (uint64_t i = 0; i < count; i++)
     {

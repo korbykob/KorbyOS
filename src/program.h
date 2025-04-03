@@ -150,3 +150,8 @@ void waitForProgram(uint64_t pid, BOOLEAN* done)
 {
     __asm__ volatile ("movq $24, %%rdi; movq %0, %%rsi; movq %1, %%rdx; int $0x80" : : "g"(pid), "g"((uint64_t)done) : "%rdi", "%rsi", "%rdx");
 }
+
+void cancelWait(BOOLEAN* done)
+{
+    __asm__ volatile ("movq $25, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)done) : "%rdi", "%rsi");
+}

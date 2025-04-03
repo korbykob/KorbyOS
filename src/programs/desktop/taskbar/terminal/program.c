@@ -226,6 +226,7 @@ void update(uint64_t ticks)
         switch (event->id)
         {
             case 0:
+                cancelWait(&done);
                 unallocate(typingBuffer);
                 unallocate(terminalDirectory);
                 unallocateWindow(window);

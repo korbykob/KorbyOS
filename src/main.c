@@ -330,6 +330,21 @@ void waitForProgram(uint64_t pid, BOOLEAN* done)
     debug("Allocated waiting id");
 }
 
+void cancelWait(BOOLEAN* done)
+{
+    debug("Removing wait");
+    WaitingProgram* iterator = (WaitingProgram*)&waitingPrograms;
+    while (iterateList(&iterator))
+    {
+        if (iterator->done == done)
+        {
+            debug("Found wait");
+            removeItem(&waitingPrograms, iterator);
+            debug("Removed wait");
+        }
+    }
+}
+
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5)
 {
     switch (code)
@@ -408,6 +423,9 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             break;
         case 24:
             waitForProgram(arg1, (BOOLEAN*)arg2);
+            break;
+        case 25:
+            cancelWait((BOOLEAN*)arg1);
             break;
         default:
             return syscallHandlers[code](arg1, arg2, arg3, arg4, arg5);
@@ -562,7 +580,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 void start()
 {
     debug("Filling syscall handlers");
-    for (uint8_t i = 0; i < 25; i++)
+    for (uint8_t i = 0; i < 26; i++)
     {
         syscallHandlers[i] = (void*)1;
     }

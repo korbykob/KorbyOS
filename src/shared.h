@@ -155,57 +155,57 @@ void readBitmap(uint8_t* bitmap, EFI_GRAPHICS_OUTPUT_BLT_PIXEL* destination)
     }
 }
 
-void* addItem(void** list, uint64_t size)
+void* addItem(void* list, uint64_t size)
 {
-    while (*list)
+    while (*(void**)list)
     {
-        list = (void**)*list;
+        list = *(void**)list;
     }
-    *list = allocate(size);
+    *(void**)list = allocate(size);
     **(void***)list = NULL;
-    return *list;
+    return *(void**)list;
 }
 
-void* addItemFirst(void** list, uint64_t size)
+void* addItemFirst(void* list, uint64_t size)
 {
     void* newItem = allocate(size);
-    *(void**)newItem = *list;
-    *list = newItem;
+    *(void**)newItem = *(void**)list;
+    *(void**)list = newItem;
     return newItem;
 }
 
-void removeItem(void** list, void* item)
+void removeItem(void* list, void* item)
 {
-    while (*list != item)
+    while (*(void**)list != item)
     {
-        list = (void**)*list;
+        list = *(void**)list;
     }
-    unallocate(*list);
-    *list = **(void***)list;
+    unallocate(*(void**)list);
+    *(void**)list = **(void***)list;
 }
 
-BOOLEAN iterateList(void** iterator)
+BOOLEAN iterateList(void* iterator)
 {
-    *iterator = **(void***)iterator;
-    return *iterator;
+    *(void**)iterator = **(void***)iterator;
+    return *(void**)iterator;
 }
 
-void moveItemEnd(void** list, void* item)
+void moveItemEnd(void* list, void* item)
 {
-    while (*list != item)
+    while (*(void**)list != item)
     {
-        list = (void**)*list;
+        list = *(void**)list;
     }
-    *list = *(void**)item;
-    while (*list)
+    *(void**)list = *(void**)item;
+    while (*(void**)list)
     {
-        list = (void**)*list;
+        list = *(void**)list;
     }
-    *list = item;
+    *(void**)list = item;
     *(void**)item = NULL;
 }
 
-uint64_t listLength(void** list)
+uint64_t listLength(void* list)
 {
     void** current = (void**)&list;
     uint64_t i = 0;
@@ -215,6 +215,15 @@ uint64_t listLength(void** list)
         i++;
     }
     return i - 1;
+}
+
+void unallocateList(void* list)
+{
+    while (*(void**)list)
+    {
+        list = *(void**)list;
+        unallocate(list);
+    }
 }
 
 void waitForCores(uint64_t count)

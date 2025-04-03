@@ -225,7 +225,7 @@ void coreSprite(uint64_t id)
 void update(uint64_t ticks)
 {
     Event* event = (Event*)&window->events;
-    while (iterateList((void**)&event))
+    while (iterateList(&event))
     {
         switch (event->id)
         {
@@ -276,7 +276,7 @@ void update(uint64_t ticks)
                 }
                 break;
         }
-        removeItem((void**)&window->events, event);
+        removeItem(&window->events, event);
         event = (Event*)&window->events;
     }
     if (q)

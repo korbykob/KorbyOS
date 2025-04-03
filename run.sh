@@ -6,7 +6,7 @@ gcc -Ignu-efi/inc -fpic -ffreestanding -fno-stack-protector -fno-stack-check -fs
 ld -shared -Bsymbolic -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -Tgnu-efi/gnuefi/elf_x86_64_efi.lds -znoexecstack gnu-efi/x86_64/gnuefi/crt0-efi-x86_64.o bin/main.o -o bin/main.so -lgnuefi -lefi
 objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 bin/main.so bin/main.efi
 mkdir -p bin/system
-nasm -f bin src/system/smp.asm -o bin/system/smp.bin
+nasm -f bin src/system/smp.asm -o bin/system/smp.boot
 mkdir -p bin/programs/test
 nasm -f elf64 src/programs/test/program.asm -o bin/programs/test/programasm.o
 gcc -Ignu-efi/inc -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/test/program.c -o bin/programs/test/program.o
@@ -20,7 +20,7 @@ nasm -f elf64 src/programs/desktop/taskbar/rendering/program.asm -o bin/programs
 gcc -Ignu-efi/inc -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/desktop/taskbar/rendering/program.c -o bin/programs/desktop/taskbar/rendering/program.o
 ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -o bin/programs/desktop/taskbar/rendering/program.bin -Ttext 0x0 --oformat binary bin/programs/desktop/taskbar/rendering/programasm.o bin/programs/desktop/taskbar/rendering/program.o -lgnuefi -lefi
 uefi-run -b OVMF-pure-efi.fd -d -s 20 \
--f bin/system/smp.bin:system/smp.bin \
+-f bin/system/smp.boot:system/smp.boot \
 -f src/fonts/font.psf:fonts/font.psf \
 -f bin/programs/test/program.bin:programs/test/program.bin \
 -f bin/programs/desktop/program.bin:programs/desktop/program.bin \

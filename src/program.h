@@ -121,9 +121,9 @@ uint8_t getRegisteredSyscall(const CHAR16* name)
     return (uint8_t)result;
 }
 
-void unregisterSyscallHandler(const CHAR16* name)
+void unregisterSyscallHandler(uint8_t id)
 {
-    __asm__ volatile ("movq $19, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)name) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $19, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)id) : "%rdi", "%rsi");
 }
 
 void getDisplayInfo(Display* display)

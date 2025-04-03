@@ -6,12 +6,12 @@ typedef struct
 {
     void* next;
     const CHAR16* name;
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24*24];
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL icon[24 * 24];
     uint64_t size;
     uint8_t* data;
 } ProgramData;
 ProgramData* programs = NULL;
-uint8_t programCount = 0;
+uint8_t programCount = 1;
 uint8_t mouseIcon[] = {
     00,00,00,02,02,02,02,02,02,02,02,02,02,02,02,02,
     00,01,00,00,00,02,02,02,02,02,02,02,02,02,02,02,
@@ -30,6 +30,32 @@ uint8_t mouseIcon[] = {
     02,02,02,02,02,02,02,02,02,02,02,02,02,00,02,02,
     02,02,02,02,02,02,02,02,02,02,02,02,02,02,02,02,
 };
+uint8_t exitIcon[] = {
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,1,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,0,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,0,1,1,0,1,1,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,1,1,1,0,1,1,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,
+    1,1,1,1,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,
+    1,1,1,1,1,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,
+};
 int64_t mouseX = 0;
 int64_t mouseY = 0;
 Window* windows = NULL;
@@ -44,11 +70,16 @@ typedef struct
 } Taskbar;
 Taskbar* taskbar = NULL;
 uint64_t cores = 0;
+PointerArray* key = NULL;
+PointerArray* move = NULL;
+PointerArray* click = NULL;
+uint8_t syscall = 0;
+BOOLEAN exiting = FALSE;
 
 Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, const CHAR16* icon)
 {
     debug("Allocating window");
-    Window* window = addItem((void**)&windows, sizeof(Window));
+    Window* window = addItem(&windows, sizeof(Window));
     window->x = display.width / 2 - (width + 20) / 2;
     window->y = display.height / 2 - (height + 57) / 2;
     window->width = width;
@@ -67,7 +98,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, con
     window->events = NULL;
     focus = window;
     debug("Adding to taskbar");
-    Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
+    Taskbar* item = addItem(&taskbar, sizeof(Taskbar));
     item->window = window;
     debug("Allocated window");
     return window;
@@ -76,7 +107,7 @@ Window* allocateWindow(uint32_t width, uint32_t height, const CHAR16* title, con
 Window* allocateFullscreenWindow(const CHAR16* icon)
 {
     debug("Allocating fullscreen window");
-    Window* window = addItem((void**)&windows, sizeof(Window));
+    Window* window = addItem(&windows, sizeof(Window));
     window->x = 0;
     window->y = 0;
     window->width = display.width;
@@ -93,7 +124,7 @@ Window* allocateFullscreenWindow(const CHAR16* icon)
     window->events = NULL;
     focus = window;
     debug("Adding to taskbar");
-    Taskbar* item = addItem((void**)&taskbar, sizeof(Taskbar));
+    Taskbar* item = addItem(&taskbar, sizeof(Taskbar));
     item->window = window;
     debug("Allocated fullscreen window");
     return window;
@@ -103,12 +134,12 @@ void unallocateWindow(Window* window)
 {
     debug("Removing window");
     Taskbar* item = (Taskbar*)&taskbar;
-    while (iterateList((void**)&item))
+    while (iterateList(&item))
     {
         if (item->window == window)
         {
             debug("Removing from taskbar");
-            removeItem((void**)&taskbar, item);
+            removeItem(&taskbar, item);
             break;
         }
     }
@@ -126,7 +157,7 @@ void unallocateWindow(Window* window)
     debug("Unallocating video buffer");
     unallocate(window->buffer);
     debug("Unallocating window");
-    removeItem((void**)&windows, window);
+    removeItem(&windows, window);
     debug("Removed window");
 }
 
@@ -139,7 +170,7 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
     }
     if (focus)
     {
-        KeyEvent* event = addItem((void**)&focus->events, sizeof(KeyEvent));
+        KeyEvent* event = addItem(&focus->events, sizeof(KeyEvent));
         event->header.id = 1;
         event->scancode = scancode;
         event->pressed = pressed;
@@ -150,7 +181,7 @@ void mouseMove(int16_t x, int16_t y)
 {
     if (focus && focus->mouseMode == 2 && (focus->fullscreen || (mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)))
     {
-        MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+        MouseEvent* event = addItem(&focus->events, sizeof(MouseEvent));
         event->header.id = 3;
         event->x = x;
         event->y = y;
@@ -205,14 +236,14 @@ void mouseMove(int16_t x, int16_t y)
         {
             if (focus->fullscreen)
             {
-                MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+                MouseEvent* event = addItem(&focus->events, sizeof(MouseEvent));
                 event->header.id = 3;
                 event->x = mouseX;
                 event->y = mouseY;
             }
             else if (mouseX >= focus->x + 10 && mouseX < focus->x + focus->width + 10 && mouseY >= focus->y + 47 && mouseY < focus->y + 47 + focus->height)
             {
-                MouseEvent* event = addItem((void**)&focus->events, sizeof(MouseEvent));
+                MouseEvent* event = addItem(&focus->events, sizeof(MouseEvent));
                 event->header.id = 3;
                 event->x = mouseX - focus->x - 10;
                 event->y = mouseY - focus->y - 47;
@@ -231,7 +262,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
             {
                 Taskbar* item = (Taskbar*)&taskbar;
                 uint64_t i = programCount;
-                while (iterateList((void**)&item))
+                while (iterateList(&item))
                 {
                     uint64_t x = 5 + i * 32;
                     if (mouseX >= x && mouseX < x + 24)
@@ -242,7 +273,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                             {
                                 item->window->minimised = FALSE;
                                 focus = item->window;
-                                moveItemEnd((void**)&windows, item->window);
+                                moveItemEnd(&windows, item->window);
                             }
                             else
                             {
@@ -254,15 +285,14 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                                 else
                                 {
                                     focus = item->window;
-                                    moveItemEnd((void**)&windows, item->window);
+                                    moveItemEnd(&windows, item->window);
                                 }
                             }
                         }
                         else
                         {
                             debug("Sending quit event to window");
-                            Event* event = addItem((void**)&item->window->events, sizeof(Event));
-                            event->id = 0;
+                            ((Event*)addItem(&item->window->events, sizeof(Event)))->id = 0;
                             debug("Sent quit event to window");
                         }
                         break;
@@ -272,27 +302,39 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
             }
             else if (left)
             {
-                ProgramData* item = (ProgramData*)&programs;
-                uint64_t i = 0;
-                while (iterateList((void**)&item))
+                if (mouseX >= 4 && mouseX < 28)
                 {
-                    uint64_t x = 4 + i * 32;
-                    if (mouseX >= x && mouseX < x + 24)
+                    exiting = TRUE;
+                    Window* window = (Window*)&windows;
+                    while (iterateList(&window))
                     {
-                        execute(item->name);
+                        ((Event*)addItem(&window->events, sizeof(Event)))->id = 0;
                     }
-                    i++;
+                }
+                else
+                {
+                    ProgramData* item = (ProgramData*)&programs;
+                    uint64_t i = 1;
+                    while (iterateList(&item))
+                    {
+                        uint64_t x = 4 + i * 32;
+                        if (mouseX >= x && mouseX < x + 24)
+                        {
+                            execute(item->name);
+                        }
+                        i++;
+                    }
                 }
             }
         }
     }
     else
     {
-        uint64_t length = listLength((void**)&windows);
+        uint64_t length = listLength(&windows);
         Window** newWindows = allocate(length * 8);
         Window* window = (Window*)&windows;
         uint64_t reverse = length - 1;
-        while (iterateList((void**)&window))
+        while (iterateList(&window))
         {
             newWindows[reverse--] = window;
         }
@@ -306,7 +348,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     {
                         if (focus == newWindows[i])
                         {
-                            ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
+                            ClickEvent* event = addItem(&newWindows[i]->events, sizeof(ClickEvent));
                             event->header.id = 2;
                             event->left = left;
                             event->pressed = pressed;
@@ -314,7 +356,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         else
                         {
                             focus = newWindows[i];
-                            moveItemEnd((void**)&windows, newWindows[i]);
+                            moveItemEnd(&windows, newWindows[i]);
                         }
                         break;
                     }
@@ -323,7 +365,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                 {
                     if (focus == newWindows[i])
                     {
-                        ClickEvent* event = addItem((void**)&newWindows[i]->events, sizeof(ClickEvent));
+                        ClickEvent* event = addItem(&newWindows[i]->events, sizeof(ClickEvent));
                         event->header.id = 2;
                         event->left = left;
                         event->pressed = pressed;
@@ -331,7 +373,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     else if (left && pressed)
                     {
                         focus = newWindows[i];
-                        moveItemEnd((void**)&windows, newWindows[i]);
+                        moveItemEnd(&windows, newWindows[i]);
                     }
                     break;
                 }
@@ -340,8 +382,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                     if (mouseX >= newWindows[i]->x + newWindows[i]->width - 22 && mouseX < newWindows[i]->x + newWindows[i]->width + 10 && mouseY >= newWindows[i]->y + 10 && mouseY < newWindows[i]->y + 42)
                     {
                         debug("Sending quit event to window");
-                        Event* event = addItem((void**)&newWindows[i]->events, sizeof(Event));
-                        event->id = 0;
+                        ((Event*)addItem(&newWindows[i]->events, sizeof(Event)))->id = 0;
                         debug("Sent quit event to window");
                         break;
                     }
@@ -362,7 +403,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                         if (focus != newWindows[i])
                         {
                             focus = newWindows[i];
-                            moveItemEnd((void**)&windows, newWindows[i]);
+                            moveItemEnd(&windows, newWindows[i]);
                         }
                         break;
                     }
@@ -405,7 +446,7 @@ void _start()
         if (StrCmp(files[i]->name + StrLen(files[i]->name) - 4, L".bin") == 0)
         {
             debug("Located binary");
-            current = addItem((void**)&programs, sizeof(ProgramData));
+            current = addItem(&programs, sizeof(ProgramData));
             current->name = files[i]->name;
             current->size = files[i]->size;
             current->data = files[i]->data;
@@ -445,10 +486,10 @@ void _start()
     mouseX = display.width / 2;
     mouseY = display.height / 2;
     debug("Adding calls");
-    addKeyCall(keyPress);
-    addMoveCall(mouseMove);
-    addClickCall(mouseClick);
-    registerSyscallHandler(L"desktop", syscallHandle);
+    key = addKeyCall(keyPress);
+    move = addMoveCall(mouseMove);
+    click = addClickCall(mouseClick);
+    syscall = registerSyscallHandler(L"desktop", syscallHandle);
     debug("Getting core count");
     cores = getCores();
     debug("Desktop started");
@@ -464,7 +505,7 @@ void update(uint64_t ticks)
         splitTask(coreBlit, cores);
     }
     Window* window = (Window*)&windows;
-    while (iterateList((void**)&window))
+    while (iterateList(&window))
     {
         if (!window->minimised)
         {
@@ -492,9 +533,19 @@ void update(uint64_t ticks)
     if (!focus || !focus->fullscreen)
     {
         drawRectangle(0, display.height - 32, display.width, 32, grey);
+        EFI_GRAPHICS_OUTPUT_BLT_PIXEL* address = display.buffer + (display.height - 28) * display.width + 4;
+        uint8_t* buffer = exitIcon;
+        for (uint8_t y = 0; y < 24; y++)
+        {
+            for (uint8_t x = 0; x < 24; x++)
+            {
+                *address++ = *buffer++ ? red : white;
+            }
+            address += display.width - 24;
+        }
         ProgramData* programData = (ProgramData*)&programs;
-        uint64_t i = 0;
-        while (iterateList((void**)&programData))
+        uint64_t i = 1;
+        while (iterateList(&programData))
         {
             drawImage(4 + i * 32, display.height - 28, 24, 24, programData->icon);
             i++;
@@ -502,7 +553,7 @@ void update(uint64_t ticks)
         drawRectangle(programCount * 32 - 1, display.height - 28, 2, 24, black);
         Taskbar* item = (Taskbar*)&taskbar;
         i = programCount;
-        while (iterateList((void**)&item))
+        while (iterateList(&item))
         {
             if (focus == item->window)
             {
@@ -557,5 +608,15 @@ void update(uint64_t ticks)
             }
             address += display.width - 16;
         }
+    }
+    if (exiting && listLength(&windows) == 0)
+    {
+        unallocateList(&programs);
+        unallocate(wallpaper);
+        removeKeyCall(key);
+        removeMoveCall(move);
+        removeClickCall(click);
+        unregisterSyscallHandler(syscall);
+        quit();
     }
 }

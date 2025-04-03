@@ -99,7 +99,7 @@ uint64_t execute(const CHAR16* file)
     debug("Executing program");
     uint64_t pid = 0;
     Program* iterator = (Program*)&running;
-    while (iterateList((void**)&iterator))
+    while (iterateList(&iterator))
     {
         if (pid == iterator->pid)
         {
@@ -108,7 +108,7 @@ uint64_t execute(const CHAR16* file)
         }
     }
     debug("Allocating program");
-    Program* program = addItemFirst((void**)&running, sizeof(Program));
+    Program* program = addItemFirst(&running, sizeof(Program));
     program->pid = pid;
     uint64_t size = 0;
     uint8_t* data = readFile(file, &size);
@@ -129,14 +129,14 @@ void quit()
 {
     debug("Exiting program");
     unallocate(currentProgram->start);
-    removeItem((void**)&running, currentProgram);
+    removeItem(&running, currentProgram);
     debug("Exited program");
 }
 
 PointerArray* addKeyCall(void (*keyCall)(uint8_t scancode, BOOLEAN pressed))
 {
     debug("Adding key press call");
-    PointerArray* item = addItem((void**)&keyCalls, sizeof(PointerArray));
+    PointerArray* item = addItem(&keyCalls, sizeof(PointerArray));
     item->pointer = keyCall;
     debug("Added key press call");
     return item;
@@ -145,14 +145,14 @@ PointerArray* addKeyCall(void (*keyCall)(uint8_t scancode, BOOLEAN pressed))
 void removeKeyCall(PointerArray* keyCall)
 {
     debug("Removing key press call");
-    removeItem((void**)&keyCalls, keyCall);
+    removeItem(&keyCalls, keyCall);
     debug("Removed key press call");
 }
 
 PointerArray* addMoveCall(void (*moveCall)(int16_t x, int16_t y))
 {
     debug("Adding mouse move call");
-    PointerArray* item = addItem((void**)&moveCalls, sizeof(PointerArray));
+    PointerArray* item = addItem(&moveCalls, sizeof(PointerArray));
     item->pointer = moveCall;
     debug("Added mouse move call");
     return item;
@@ -161,14 +161,14 @@ PointerArray* addMoveCall(void (*moveCall)(int16_t x, int16_t y))
 void removeMoveCall(PointerArray* moveCall)
 {
     debug("Removing mouse move call");
-    removeItem((void**)&moveCalls, moveCall);
+    removeItem(&moveCalls, moveCall);
     debug("Removed mouse move call");
 }
 
 PointerArray* addClickCall(void (*clickCall)(BOOLEAN left, BOOLEAN pressed))
 {
     debug("Adding mouse click call");
-    PointerArray* item = addItem((void**)&clickCalls, sizeof(PointerArray));
+    PointerArray* item = addItem(&clickCalls, sizeof(PointerArray));
     item->pointer = clickCall;
     debug("Added mouse click call");
     return item;
@@ -177,7 +177,7 @@ PointerArray* addClickCall(void (*clickCall)(BOOLEAN left, BOOLEAN pressed))
 void removeClickCall(PointerArray* clickCall)
 {
     debug("Removing mouse click call");
-    removeItem((void**)&clickCalls, clickCall);
+    removeItem(&clickCalls, clickCall);
     debug("Removed mouse click call");
 }
 
@@ -196,7 +196,7 @@ uint8_t registerSyscallHandler(const CHAR16* name, uint64_t (*syscallHandler)(ui
     }
     syscallHandlers[id] = syscallHandler;
     debug("Allocating syscall id");
-    Syscall* syscall = addItem((void**)&syscallIds, sizeof(Syscall));
+    Syscall* syscall = addItem(&syscallIds, sizeof(Syscall));
     debug("Reallocating name");
     syscall->name = allocate((StrLen(name) + 1) * 2);
     StrCpy(syscall->name, name);
@@ -209,7 +209,7 @@ uint8_t getRegisteredSyscall(const CHAR16* name)
 {
     debug("Getting registered syscall");
     Syscall* iterator = (Syscall*)&syscallIds;
-    while (iterateList((void**)&iterator))
+    while (iterateList(&iterator))
     {
         if (StrCmp(name, iterator->name) == 0)
         {
@@ -220,18 +220,18 @@ uint8_t getRegisteredSyscall(const CHAR16* name)
     return 0;
 }
 
-void unregisterSyscallHandler(const CHAR16* name)
+void unregisterSyscallHandler(uint8_t id)
 {
     debug("Unregistering syscall handler");
     Syscall* iterator = (Syscall*)&syscallIds;
-    while (iterateList((void**)&iterator))
+    while (iterateList(&iterator))
     {
-        if (StrCmp(name, iterator->name) == 0)
+        if (iterator->id == id)
         {
             debug("Found syscall handler");
             syscallHandlers[iterator->id] = NULL;
             unallocate(iterator->name);
-            removeItem((void**)&syscallIds, iterator);
+            removeItem(&syscallIds, iterator);
             debug("Unregistered syscall handler");
         }
     }
@@ -362,7 +362,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return (uint64_t)getRegisteredSyscall((const CHAR16*)arg1);
             break;
         case 19:
-            unregisterSyscallHandler((const CHAR16*)arg1);
+            unregisterSyscallHandler((uint8_t)arg1);
             break;
         case 20:
             getDisplayInfo((Display*)arg1);
@@ -440,7 +440,7 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
         }
     }
     PointerArray* call = (PointerArray*)&keyCalls;
-    while (iterateList((void**)&call))
+    while (iterateList(&call))
     {
         ((void (*)(uint8_t scancode, BOOLEAN pressed))call->pointer)(scancode, pressed);
     }
@@ -449,7 +449,7 @@ void keyPress(uint8_t scancode, BOOLEAN pressed)
 void mouseMove(int16_t x, int16_t y)
 {
     PointerArray* call = (PointerArray*)&moveCalls;
-    while (iterateList((void**)&call))
+    while (iterateList(&call))
     {
         ((void (*)(int16_t x, int16_t y))call->pointer)(x, y);
     }
@@ -458,7 +458,7 @@ void mouseMove(int16_t x, int16_t y)
 void mouseClick(BOOLEAN left, BOOLEAN pressed)
 {
     PointerArray* call = (PointerArray*)&clickCalls;
-    while (iterateList((void**)&call))
+    while (iterateList(&call))
     {
         ((void (*)(BOOLEAN left, BOOLEAN pressed))call->pointer)(left, pressed);
     }
@@ -500,7 +500,14 @@ void start()
                 StrCpy(executeString + directoryLength, typingBuffer);
                 if (checkFile(executeString))
                 {
-                    terminalPid = execute(executeString);
+                    if (StrCmp(executeString + executeLength - 4, L".bin") == 0)
+                    {
+                        terminalPid = execute(executeString);
+                    }
+                    else
+                    {
+                        print(L"File is not executable.\n");
+                    }
                 }
                 else if (checkFolder(executeString))
                 {
@@ -550,14 +557,14 @@ void start()
                 }
                 else
                 {
-                    print(L"Command or executable file not found\n");
+                    print(L"Command or executable file not found.\n");
                 }
                 unallocate(executeString);
             }
         }
         BOOLEAN found = FALSE;
         Program* program = (Program*)&running;
-        while (iterateList((void**)&program))
+        while (iterateList(&program))
         {
             if (program->pid == terminalPid)
             {

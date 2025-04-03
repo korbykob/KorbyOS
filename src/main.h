@@ -225,12 +225,12 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     }
     debug("Locating LIP protocol");
     EFI_LOADED_IMAGE* image = NULL;
-    uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (void**)&image);
+    uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, &image);
     debug("Opening root file system");
     EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
     EFI_FILE_HANDLE file = NULL;
-    debug("Loading /system/smp.bin");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"system\\smp.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    debug("Loading /system/smp.boot");
+    uefi_call_wrapper(fs->Open, 5, fs, &file, L"system\\smp.boot", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
     EFI_FILE_INFO* info = LibFileInfo(file);
     uint64_t smpSize = info->FileSize;
     FreePool(info);
@@ -324,82 +324,82 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     debug("Exiting boot services");
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
     debug("Adding /system");
-    File* newFile = addItem((void**)&files, sizeof(File));
+    File* newFile = addItem(&files, sizeof(File));
     newFile->name = L"/system";
     newFile->size = 0;
     newFile->data = NULL;
-    debug("Adding /system/smp.bin");
-    newFile = addItem((void**)&files, sizeof(File));
-    newFile->name = L"/system/smp.bin";
+    debug("Adding /system/smp.boot");
+    newFile = addItem(&files, sizeof(File));
+    newFile->name = L"/system/smp.boot";
     newFile->size = smpSize;
     newFile->data = smp;
     debug("Adding /fonts");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/fonts";
     newFile->size = 0;
     newFile->data = NULL;
     debug("Adding /fonts/font.psf");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/fonts/font.psf";
     newFile->size = fontSize;
     newFile->data = font;
     debug("Adding /programs");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs";
     newFile->size = 0;
     newFile->data = NULL;
     debug("Adding /programs/test");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/test";
     newFile->size = 0;
     newFile->data = NULL;
     debug("Adding /programs/test/program.bin");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/test/program.bin";
     newFile->size = testSize;
     newFile->data = test;
     debug("Adding /programs/desktop");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop";
     newFile->size = 0;
     newFile->data = NULL;
     debug("Adding /programs/desktop/program.bin");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/program.bin";
     newFile->size = desktopSize;
     newFile->data = desktop;
     debug("Adding /programs/desktop/wallpaper.bmp");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/wallpaper.bmp";
     newFile->size = wallpaperSize;
     newFile->data = wallpaper;
     debug("Adding /programs/desktop/taskbar");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/taskbar";
     newFile->size = 0;
     newFile->data = NULL;
     debug("Adding /programs/desktop/taskbar/rendering");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/taskbar/rendering";
     newFile->size = 0;
     newFile->data = NULL;
     debug("Adding /programs/desktop/taskbar/rendering/program.bin");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/taskbar/rendering/program.bin";
     newFile->size = renderingSize;
     newFile->data = rendering;
     debug("Adding /programs/desktop/taskbar/rendering/program.bmp");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/taskbar/rendering/program.bmp";
     newFile->size = renderingBmpSize;
     newFile->data = renderingBmp;
     debug("Adding /programs/desktop/taskbar/rendering/wall.bmp");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/taskbar/rendering/wall.bmp";
     newFile->size = wallSize;
     newFile->data = wall;
     debug("Adding /programs/desktop/taskbar/rendering/sprite.bmp");
-    newFile = addItem((void**)&files, sizeof(File));
+    newFile = addItem(&files, sizeof(File));
     newFile->name = L"/programs/desktop/taskbar/rendering/sprite.bmp";
     newFile->size = spriteSize;
     newFile->data = sprite;
@@ -425,7 +425,7 @@ void* writeFile(const CHAR16* name, uint64_t size)
 {
     File* file = NULL;
     File* iterator = (File*)&files;
-    while (iterateList((void**)&iterator))
+    while (iterateList(&iterator))
     {
         if (StrCmp(name, iterator->name) == 0)
         {
@@ -436,7 +436,7 @@ void* writeFile(const CHAR16* name, uint64_t size)
     }
     if (!file)
     {
-        file = addItem((void**)&files, sizeof(File));
+        file = addItem(&files, sizeof(File));
         file->name = allocate((StrLen(name) + 1) * 2);
         StrCpy(file->name, name);
     }
@@ -448,7 +448,7 @@ void* writeFile(const CHAR16* name, uint64_t size)
 uint8_t* readFile(const CHAR16* name, uint64_t* size)
 {
     File* file = (File*)&files;
-    while (iterateList((void**)&file))
+    while (iterateList(&file))
     {
         if (StrCmp(name, file->name) == 0)
         {
@@ -465,7 +465,7 @@ uint8_t* readFile(const CHAR16* name, uint64_t* size)
 BOOLEAN checkFile(const CHAR16* name)
 {
     File* file = (File*)&files;
-    while (iterateList((void**)&file))
+    while (iterateList(&file))
     {
         if (StrCmp(name, file->name) == 0 && file->size != 0)
         {
@@ -483,7 +483,7 @@ BOOLEAN checkFolder(const CHAR16* name)
         return FALSE;
     }
     File* file = (File*)&files;
-    while (iterateList((void**)&file))
+    while (iterateList(&file))
     {
         if (StrnCmp(name, file->name, nameLength) == 0)
         {
@@ -496,11 +496,11 @@ BOOLEAN checkFolder(const CHAR16* name)
 void deleteFile(const CHAR16* name)
 {
     File* file = (File*)&files;
-    while (iterateList((void**)&file))
+    while (iterateList(&file))
     {
         if (StrCmp(name, file->name) == 0)
         {
-            removeItem((void**)&files, file);
+            removeItem(&files, file);
             unallocate(file->name);
             unallocate(file->data);
             break;
@@ -512,7 +512,7 @@ File** getFiles(const CHAR16* root, uint64_t* count, BOOLEAN recursive)
 {
     uint64_t length = StrLen(root);
     File* file = (File*)&files;
-    while (iterateList((void**)&file))
+    while (iterateList(&file))
     {
         if (StrnCmp(file->name, root, length) == 0 && (recursive || !inString(file->name + length, L'/')))
         {
@@ -522,7 +522,7 @@ File** getFiles(const CHAR16* root, uint64_t* count, BOOLEAN recursive)
     File** items = allocate(*count * sizeof(File*));
     uint64_t i = 0;
     file = (File*)&files;
-    while (iterateList((void**)&file))
+    while (iterateList(&file))
     {
         if (StrnCmp(file->name, root, length) == 0 && (recursive || !inString(file->name + length, L'/')))
         {
@@ -945,7 +945,7 @@ void completed()
     __asm__ volatile ("mov %%cr3, %0" : "=g"(cr3));
     *(uint64_t*)0x5000 = cr3;
     uint64_t smpSize = 0;
-    uint8_t* data = readFile(L"/system/smp.bin", &smpSize);
+    uint8_t* data = readFile(L"/system/smp.boot", &smpSize);
     debug("Loading core binary");
     copyMemory(data, (uint8_t*)0xF000, smpSize);
     *(uint8_t*)0xEFFF = 0;

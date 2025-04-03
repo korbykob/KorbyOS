@@ -324,10 +324,20 @@ void getDisplayInfo(Display* display)
 void waitForProgram(uint64_t pid, BOOLEAN* done)
 {
     debug("Allocating waiting id");
-    WaitingProgram* waiting = addItem(&waitingPrograms, sizeof(WaitingProgram));
-    waiting->pid = pid;
-    waiting->done = done;
-    debug("Allocated waiting id");
+    Program* iterator = (Program*)&running;
+    while (iterateList(&iterator))
+    {
+        if (pid == iterator->pid)
+        {
+            debug("Allocated waiting id");
+            WaitingProgram* waiting = addItem(&waitingPrograms, sizeof(WaitingProgram));
+            waiting->pid = pid;
+            waiting->done = done;
+            return;
+        }
+    }
+    debug("Pid does not exist");
+    *done = TRUE;
 }
 
 void cancelWait(BOOLEAN* done)

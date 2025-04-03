@@ -18,11 +18,6 @@ typedef struct {
     void* next;
     void* pointer;
 } PointerArray;
-typedef struct {
-    void* next;
-    CHAR16* name;
-    uint8_t id;
-} Syscall;
 uint64_t* blitTo = NULL;
 uint64_t* blitFrom = NULL;
 uint64_t blitSize = 0;

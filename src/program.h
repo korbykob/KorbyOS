@@ -126,12 +126,27 @@ void unregisterSyscallHandler(uint8_t id)
     __asm__ volatile ("movq $19, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)id) : "%rdi", "%rsi");
 }
 
-void getDisplayInfo(Display* display)
+void registerTerminal(void (*function)(const CHAR16* message))
 {
-    __asm__ volatile ("movq $20, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)display) : "%rdi", "%rsi");
+    __asm__ volatile ("movq $20, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)function) : "%rdi", "%rsi");
 }
 
 void print(const CHAR16* message)
 {
     __asm__ volatile ("movq $21, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)message) : "%rdi", "%rsi");
+}
+
+void unregisterTerminal()
+{
+    __asm__ volatile ("movq $22, %%rdi; int $0x80" : : : "%rdi");
+}
+
+void getDisplayInfo(Display* display)
+{
+    __asm__ volatile ("movq $23, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)display) : "%rdi", "%rsi");
+}
+
+void waitForProgram(uint64_t pid, BOOLEAN* done)
+{
+    __asm__ volatile ("movq $24, %%rdi; movq %0, %%rsi; movq %1, %%rdx; int $0x80" : : "g"(pid), "g"((uint64_t)done) : "%rdi", "%rsi", "%rdx");
 }

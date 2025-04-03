@@ -13,6 +13,9 @@ sudo cp bin/programs/test/program.bin staging/programs/test/program.bin
 sudo mkdir -p staging/programs/desktop
 sudo cp bin/programs/desktop/program.bin staging/programs/desktop/program.bin
 sudo cp src/programs/desktop/wallpaper.bmp staging/programs/desktop/wallpaper.bmp
+sudo mkdir -p staging/programs/desktop/taskbar/terminal
+sudo cp bin/programs/desktop/taskbar/terminal/program.bin staging/programs/desktop/taskbar/terminal/program.bin
+sudo cp src/programs/desktop/taskbar/terminal/program.bmp staging/programs/desktop/taskbar/terminal/program.bmp
 sudo mkdir -p staging/programs/desktop/taskbar/rendering
 sudo cp bin/programs/desktop/taskbar/rendering/program.bin staging/programs/desktop/taskbar/rendering/program.bin
 sudo cp src/programs/desktop/taskbar/rendering/program.bmp staging/programs/desktop/taskbar/rendering/program.bmp

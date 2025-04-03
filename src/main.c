@@ -82,17 +82,37 @@ typedef struct
 {
     void* next;
     uint64_t pid;
+    uint8_t terminalId;
     void (*start)();
     void (*update)(uint64_t ticks);
 } Program;
 Program* running = NULL;
-Program* currentProgram = 0;
+Program* currentProgram = NULL;
 PointerArray* keyCalls = NULL;
 PointerArray* moveCalls = NULL;
 PointerArray* clickCalls = NULL;
+typedef struct {
+    void* next;
+    CHAR16* name;
+    uint8_t id;
+} Syscall;
 Syscall* syscallIds = NULL;
 uint64_t (*syscallHandlers[256])(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4);
+typedef struct
+{
+    void* next;
+    uint64_t id;
+} Terminal;
+Terminal* terminalIds = NULL;
+void (*terminals[256])(const CHAR16* message);
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* videoBuffer = NULL;
+typedef struct
+{
+    void* next;
+    uint64_t pid;
+    BOOLEAN* done;
+} WaitingProgram;
+WaitingProgram* waitingPrograms = NULL;
 
 uint64_t execute(const CHAR16* file)
 {
@@ -110,6 +130,7 @@ uint64_t execute(const CHAR16* file)
     debug("Allocating program");
     Program* program = addItemFirst(&running, sizeof(Program));
     program->pid = pid;
+    program->terminalId = currentProgram ? currentProgram->terminalId : 0;
     uint64_t size = 0;
     uint8_t* data = readFile(file, &size);
     debug("Allocating binary");
@@ -128,8 +149,20 @@ uint64_t execute(const CHAR16* file)
 void quit()
 {
     debug("Exiting program");
-    unallocate(currentProgram->start);
     removeItem(&running, currentProgram);
+    WaitingProgram* iterator = (WaitingProgram*)&waitingPrograms;
+    while (iterateList(&iterator))
+    {
+        if (iterator->pid == currentProgram->pid)
+        {
+            debug("Removing waiting program");
+            *iterator->done = TRUE;
+            removeItem(&waitingPrograms, iterator);
+            debug("Removed waiting program");
+            break;
+        }
+    }
+    unallocate(currentProgram->start);
     debug("Exited program");
 }
 
@@ -237,6 +270,48 @@ void unregisterSyscallHandler(uint8_t id)
     }
 }
 
+void registerTerminal(void (*function)(const CHAR16* message))
+{
+    debug("Registering terminal");
+    uint8_t id = 0;
+    while (TRUE)
+    {
+        if (terminals[id] == NULL)
+        {
+            debug("Found unused terminal id");
+            break;
+        }
+        id++;
+    }
+    terminals[id] = function;
+    debug("Allocating terminal id");
+    Terminal* terminal = addItem(&terminalIds, sizeof(Terminal));
+    terminal->id = id;
+    currentProgram->terminalId = id;
+    debug("Registered terminal");
+}
+
+void print(const CHAR16* message)
+{
+    terminals[currentProgram ? currentProgram->terminalId : 0](message);
+}
+
+void unregisterTerminal()
+{
+    debug("Unregistering terminal");
+    Terminal* iterator = (Terminal*)&terminalIds;
+    while (iterateList(&iterator))
+    {
+        if (iterator->id == currentProgram->terminalId)
+        {
+            debug("Found terminal");
+            terminals[iterator->id] = NULL;
+            removeItem(&terminalIds, iterator);
+            debug("Unregistered terminal");
+        }
+    }
+}
+
 void getDisplayInfo(Display* display)
 {
     debug("Getting display info");
@@ -246,58 +321,13 @@ void getDisplayInfo(Display* display)
     debug("Got display info");
 }
 
-void coreDrop(uint64_t id)
+void waitForProgram(uint64_t pid, BOOLEAN* done)
 {
-    for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution - 32; y++)
-    {
-        for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution / (cpuCount + 1); x++)
-        {
-            uint32_t newX = x + id * (GOP->Mode->Info->HorizontalResolution / (cpuCount + 1));
-            videoBuffer[y * GOP->Mode->Info->HorizontalResolution + newX] = videoBuffer[(y + 32) * GOP->Mode->Info->HorizontalResolution + newX];
-        }
-    }
-}
-
-void print(const CHAR16* message)
-{
-    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, black);
-    uint64_t length = StrLen(message);
-    for (uint64_t i = 0; i < length; i++)
-    {
-        if (*message != L'\n')
-        {
-            drawCharacter(*message, cursorX * 16, cursorY * 32, normal);
-            cursorX++;
-            if (cursorX == terminalWidth)
-            {
-                cursorX = 0;
-                if (cursorY + 1 != terminalHeight)
-                {
-                    cursorY++;
-                }
-                else
-                {
-                    splitTask(coreDrop, cpuCount + 1);
-                    drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, black);
-                }
-            }
-        }
-        else
-        {
-            cursorX = 0;
-            if (cursorY + 1 != terminalHeight)
-            {
-                cursorY++;
-            }
-            else
-            {
-                splitTask(coreDrop, cpuCount + 1);
-                drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, black);
-            }
-        }
-        message++;
-    }
-    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
+    debug("Allocating waiting id");
+    WaitingProgram* waiting = addItem(&waitingPrograms, sizeof(WaitingProgram));
+    waiting->pid = pid;
+    waiting->done = done;
+    debug("Allocated waiting id");
 }
 
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5)
@@ -365,16 +395,81 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             unregisterSyscallHandler((uint8_t)arg1);
             break;
         case 20:
-            getDisplayInfo((Display*)arg1);
+            registerTerminal((void (*)(const CHAR16 *message))arg1);
             break;
         case 21:
             print((const CHAR16*)arg1);
+            break;
+        case 22:
+            unregisterTerminal();
+            break;
+        case 23:
+            getDisplayInfo((Display*)arg1);
+            break;
+        case 24:
+            waitForProgram(arg1, (BOOLEAN*)arg2);
             break;
         default:
             return syscallHandlers[code](arg1, arg2, arg3, arg4, arg5);
             break;
     }
     return 0;
+}
+
+void coreDrop(uint64_t id)
+{
+    for (uint32_t y = 0; y < GOP->Mode->Info->VerticalResolution - 32; y++)
+    {
+        for (uint32_t x = 0; x < GOP->Mode->Info->HorizontalResolution / (cpuCount + 1); x++)
+        {
+            uint32_t newX = x + id * (GOP->Mode->Info->HorizontalResolution / (cpuCount + 1));
+            videoBuffer[y * GOP->Mode->Info->HorizontalResolution + newX] = videoBuffer[(y + 32) * GOP->Mode->Info->HorizontalResolution + newX];
+        }
+    }
+}
+
+void terminalPrint(const CHAR16* message)
+{
+    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, black);
+    uint64_t length = StrLen(message);
+    for (uint64_t i = 0; i < length; i++)
+    {
+        if (*message != L'\n')
+        {
+            drawCharacter(*message, cursorX * 16, cursorY * 32, normal);
+            cursorX++;
+            if (cursorX == terminalWidth)
+            {
+                cursorX = 0;
+                if (cursorY + 1 != terminalHeight)
+                {
+                    cursorY++;
+                }
+                else
+                {
+                    typingStart -= terminalWidth;
+                    splitTask(coreDrop, cpuCount + 1);
+                    drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, black);
+                }
+            }
+        }
+        else
+        {
+            cursorX = 0;
+            if (cursorY + 1 != terminalHeight)
+            {
+                cursorY++;
+            }
+            else
+            {
+                typingStart -= terminalWidth;
+                splitTask(coreDrop, cpuCount + 1);
+                drawRectangle(0, GOP->Mode->Info->VerticalResolution - 32, GOP->Mode->Info->HorizontalResolution, 32, black);
+            }
+        }
+        message++;
+    }
+    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
 }
 
 void keyPress(uint8_t scancode, BOOLEAN pressed)
@@ -467,7 +562,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 void start()
 {
     debug("Filling syscall handlers");
-    for (uint8_t i = 0; i < 22; i++)
+    for (uint8_t i = 0; i < 25; i++)
     {
         syscallHandlers[i] = (void*)1;
     }
@@ -476,6 +571,9 @@ void start()
     ZeroMem(videoBuffer, GOP->Mode->FrameBufferSize);
     initGraphics(videoBuffer, GOP->Mode->Info->HorizontalResolution, readFile(L"/fonts/font.psf", NULL));
     debug("Setting up terminal");
+    Terminal* newId = addItem(&terminalIds, sizeof(Terminal));
+    newId->id = 0;
+    terminals[0] = terminalPrint;
     terminalWidth = GOP->Mode->Info->HorizontalResolution / 16;
     terminalHeight = GOP->Mode->Info->VerticalResolution / 32;
     debug("Allocating execution buffer");
@@ -573,6 +671,7 @@ void start()
             currentProgram = program;
             program->update(ticks);
         }
+        currentProgram = NULL;
         if (!typing && !found)
         {
             terminalPid = UINT64_MAX;

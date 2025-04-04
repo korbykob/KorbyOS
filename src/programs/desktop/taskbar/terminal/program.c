@@ -143,7 +143,7 @@ void _start()
     initialiseDesktopCalls();
     cores = getCores();
     registerTerminal(terminalPrint);
-    window = allocateWindow(800, 400, L"Terminal", L"/programs/desktop/taskbar/terminal/program.bmp");
+    window = allocateWindow(800, 480, L"Terminal", L"/programs/desktop/taskbar/terminal/program.bmp");
     terminalWidth = window->width / 16;
     terminalHeight = window->height / 32;
     terminalDirectory = allocate(4);

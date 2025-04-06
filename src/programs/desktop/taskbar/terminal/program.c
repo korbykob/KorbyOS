@@ -144,6 +144,8 @@ void _start()
     cores = getCores();
     registerTerminal(terminalPrint);
     window = allocateWindow(800, 480, L"Terminal", L"/programs/desktop/taskbar/terminal/program.bmp");
+    initGraphics(window->buffer, window->width, readFile(L"/fonts/font.psf", NULL));
+    drawRectangle(0, 0, window->width, window->height, black);
     terminalWidth = window->width / 16;
     terminalHeight = window->height / 32;
     terminalDirectory = allocate(4);
@@ -151,7 +153,6 @@ void _start()
     terminalDirectory[1] = L'\0';
     typingBuffer = allocate(128 * 2);
     typingBuffer[0] = L'\0';
-    initGraphics(window->buffer, window->width, readFile(L"/fonts/font.psf", NULL));
 }
 
 void keyPress(uint8_t scancode, BOOLEAN pressed)

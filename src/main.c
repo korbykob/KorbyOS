@@ -715,9 +715,9 @@ void start()
                 {
                     print(L"Using ");
                     CHAR16 usedMessage[100];
-                    FloatToString(usedMessage, FALSE, (getUsedRam() / 10000) / 100.0);
+                    ValueToString(usedMessage, FALSE, (getUsedRam() / 10) / 100.0);
                     print(usedMessage);
-                    print(L" MB of ram.\n");
+                    print(L" KB of ram.\n");
                 }
                 else
                 {

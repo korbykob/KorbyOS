@@ -236,7 +236,6 @@ void update(uint64_t ticks)
                 unallocate(texture);
                 unallocate(sprite);
                 quit();
-                return;
                 break;
             case 1:
                 switch (((KeyEvent*)event)->scancode)

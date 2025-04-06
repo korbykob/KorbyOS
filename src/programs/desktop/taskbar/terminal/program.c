@@ -233,7 +233,6 @@ void update(uint64_t ticks)
                 unallocateWindow(window);
                 unregisterTerminal();
                 quit();
-                return;
                 break;
             case 1:
                 keyPress(((KeyEvent*)event)->scancode, ((KeyEvent*)event)->pressed);
@@ -314,9 +313,9 @@ void update(uint64_t ticks)
             {
                 print(L"Using ");
                 CHAR16 usedMessage[100];
-                FloatToString(usedMessage, FALSE, (getUsedRam() / 10000) / 100.0);
+                ValueToString(usedMessage, FALSE, getUsedRam());
                 print(usedMessage);
-                print(L" MB of ram.\n");
+                print(L" bytes of ram.\n");
             }
             else
             {

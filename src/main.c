@@ -632,6 +632,16 @@ void start()
     typingBuffer = allocate(128 * 2);
     typingBuffer[0] = L'\0';
     uint64_t ticks = 0;
+    debug("Displaying welcome information");
+    print(L"Welcome to KorbyOS!\nUsable memory: ");
+    CHAR16 memoryMessage[7];
+    FloatToString(memoryMessage, FALSE, (memorySize / 10000000) / 100.0);
+    print(memoryMessage);
+    print(L" GB\nCPU cores: ");
+    CHAR16 coreMessage[3];
+    ValueToString(coreMessage, FALSE, cpuCount + 1);
+    print(coreMessage);
+    print(L"\n\n");
     debug("Starting loop");
     while (TRUE)
     {

@@ -224,18 +224,14 @@ void coreSprite(uint64_t id)
 
 void update(uint64_t ticks)
 {
+    BOOLEAN exiting = FALSE;
     Event* event = (Event*)&window->events;
     while (iterateList(&event))
     {
         switch (event->id)
         {
             case 0:
-                sound(0);
-                unallocate(distances);
-                unallocateWindow(window);
-                unallocate(texture);
-                unallocate(sprite);
-                quit();
+                exiting = TRUE;
                 break;
             case 1:
                 switch (((KeyEvent*)event)->scancode)
@@ -369,5 +365,14 @@ void update(uint64_t ticks)
         {
             key = 0;
         }
+    }
+    if (exiting)
+    {
+        sound(0);
+        unallocate(distances);
+        unallocateWindow(window);
+        unallocate(texture);
+        unallocate(sprite);
+        quit();
     }
 }

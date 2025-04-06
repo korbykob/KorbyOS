@@ -355,6 +355,23 @@ void cancelWait(BOOLEAN* done)
     }
 }
 
+uint64_t getUsedRam()
+{
+    uint64_t used = 0;
+    Allocation* allocation = allocated;
+    uint64_t count = 0;
+    while (count != allocations)
+    {
+        if (allocation->present)
+        {
+            count++;
+            used += allocation->end - allocation->start;
+        }
+        allocation--;
+    }
+    return used;
+}
+
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5)
 {
     switch (code)
@@ -436,6 +453,9 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             break;
         case 25:
             cancelWait((BOOLEAN*)arg1);
+            break;
+        case 26:
+            return getUsedRam();
             break;
         default:
             return syscallHandlers[code](arg1, arg2, arg3, arg4, arg5);
@@ -590,7 +610,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 void start()
 {
     debug("Filling syscall handlers");
-    for (uint8_t i = 0; i < 26; i++)
+    for (uint8_t i = 0; i < 27; i++)
     {
         syscallHandlers[i] = (void*)1;
     }
@@ -680,6 +700,14 @@ void start()
                         }
                         terminalDirectory[last] = L'\0';
                     }
+                }
+                else if (StrCmp(typingBuffer, L"usage") == 0)
+                {
+                    print(L"Using ");
+                    CHAR16 usedMessage[100];
+                    FloatToString(usedMessage, FALSE, (getUsedRam() / 10000) / 100.0);
+                    print(usedMessage);
+                    print(L" MB of ram.\n");
                 }
                 else
                 {

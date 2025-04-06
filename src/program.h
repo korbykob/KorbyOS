@@ -155,3 +155,10 @@ void cancelWait(BOOLEAN* done)
 {
     __asm__ volatile ("movq $25, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)done) : "%rdi", "%rsi");
 }
+
+uint64_t getUsedRam()
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $26, %%rdi; int $0x80; movq %%rax, %0" : "=g"(result) : : "%rdi");
+    return result;
+}

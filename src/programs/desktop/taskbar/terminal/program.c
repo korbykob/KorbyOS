@@ -309,6 +309,14 @@ void update(uint64_t ticks)
                     terminalDirectory[last] = L'\0';
                 }
             }
+            else if (StrCmp(typingBuffer, L"usage") == 0)
+            {
+                print(L"Using ");
+                CHAR16 usedMessage[100];
+                FloatToString(usedMessage, FALSE, (getUsedRam() / 10000) / 100.0);
+                print(usedMessage);
+                print(L" MB of ram.\n");
+            }
             else
             {
                 print(L"Command or executable file not found.\n");

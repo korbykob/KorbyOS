@@ -237,101 +237,98 @@ void update(uint64_t ticks)
         removeItem(&window->events, event);
         event = (Event*)&window->events;
     }
-    if (!exiting)
+    if (!typing && !running)
     {
-        if (!typing && !running)
+        if (StrLen(typingBuffer) > 0)
         {
-            if (StrLen(typingBuffer) > 0)
+            uint64_t directoryLength = StrLen(terminalDirectory);
+            uint64_t executeLength = directoryLength + StrLen(typingBuffer);
+            CHAR16* executeString = allocate((executeLength + 1) * 2);
+            StrCpy(executeString, terminalDirectory);
+            StrCpy(executeString + directoryLength, typingBuffer);
+            if (checkFile(executeString))
             {
-                uint64_t directoryLength = StrLen(terminalDirectory);
-                uint64_t executeLength = directoryLength + StrLen(typingBuffer);
-                CHAR16* executeString = allocate((executeLength + 1) * 2);
-                StrCpy(executeString, terminalDirectory);
-                StrCpy(executeString + directoryLength, typingBuffer);
-                if (checkFile(executeString))
+                if (StrCmp(executeString + executeLength - 4, L".bin") == 0)
                 {
-                    if (StrCmp(executeString + executeLength - 4, L".bin") == 0)
-                    {
-                        done = FALSE;
-                        running = TRUE;
-                        waitForProgram(execute(executeString), &done);
-                    }
-                    else
-                    {
-                        print(L"File is not executable.\n");
-                    }
-                }
-                else if (checkFolder(executeString))
-                {
-                    unallocate(terminalDirectory);
-                    uint64_t directoryLength = StrLen(executeString);
-                    terminalDirectory = allocate((directoryLength + 1) * 2);
-                    StrCpy(terminalDirectory, executeString);
-                }
-                else if (StrCmp(typingBuffer, L"clear") == 0)
-                {
-                    fillColour = 0x0;
-                    fillSize = (window->width * window->height / 2) / cores;
-                    splitTask(coreFill, cores);
-                    cursorX = 0;
-                    cursorY = 0;
-                }
-                else if (StrCmp(typingBuffer, L"dir") == 0)
-                {
-                    uint64_t count = 0;
-                    File** files = getFiles(terminalDirectory, &count, FALSE);
-                    uint64_t length = StrLen(terminalDirectory);
-                    for (uint64_t i = 0; i < count; i++)
-                    {
-                        print(files[i]->name + length);
-                        print(L"\n");
-                    }
-                    unallocate(files);
-                }
-                else if (StrCmp(typingBuffer, L"..") == 0)
-                {
-                    if (terminalDirectory[1] != L'\0')
-                    {
-                        CHAR16* current = terminalDirectory;
-                        uint64_t last = 0;
-                        uint64_t end = 0;
-                        while (*current)
-                        {
-                            end++;
-                            if (*current == L'/' && *(current + 1) != L'\0')
-                            {
-                                last = end;
-                            }
-                            current++;
-                        }
-                        terminalDirectory[last] = L'\0';
-                    }
-                }
-                else if (StrCmp(typingBuffer, L"usage") == 0)
-                {
-                    print(L"Using ");
-                    CHAR16 usedMessage[100];
-                    FloatToString(usedMessage, FALSE, (getUsedRam() / 10) / 100.0);
-                    print(usedMessage);
-                    print(L" KB of ram.\n");
+                    done = FALSE;
+                    running = TRUE;
+                    waitForProgram(execute(executeString), &done);
                 }
                 else
                 {
-                    print(L"Command or executable file not found.\n");
+                    print(L"File is not executable.\n");
                 }
-                unallocate(executeString);
             }
-        }
-        if (!typing && done)
-        {
-            running = FALSE;
-            print(terminalDirectory);
-            typingStart = cursorX + cursorY * terminalWidth;
-            typingCurrent = 0;
-            typing = TRUE;
+            else if (checkFolder(executeString))
+            {
+                unallocate(terminalDirectory);
+                uint64_t directoryLength = StrLen(executeString);
+                terminalDirectory = allocate((directoryLength + 1) * 2);
+                StrCpy(terminalDirectory, executeString);
+            }
+            else if (StrCmp(typingBuffer, L"clear") == 0)
+            {
+                fillColour = 0x0;
+                fillSize = (window->width * window->height / 2) / cores;
+                splitTask(coreFill, cores);
+                cursorX = 0;
+                cursorY = 0;
+            }
+            else if (StrCmp(typingBuffer, L"dir") == 0)
+            {
+                uint64_t count = 0;
+                File** files = getFiles(terminalDirectory, &count, FALSE);
+                uint64_t length = StrLen(terminalDirectory);
+                for (uint64_t i = 0; i < count; i++)
+                {
+                    print(files[i]->name + length);
+                    print(L"\n");
+                }
+                unallocate(files);
+            }
+            else if (StrCmp(typingBuffer, L"..") == 0)
+            {
+                if (terminalDirectory[1] != L'\0')
+                {
+                    CHAR16* current = terminalDirectory;
+                    uint64_t last = 0;
+                    uint64_t end = 0;
+                    while (*current)
+                    {
+                        end++;
+                        if (*current == L'/' && *(current + 1) != L'\0')
+                        {
+                            last = end;
+                        }
+                        current++;
+                    }
+                    terminalDirectory[last] = L'\0';
+                }
+            }
+            else if (StrCmp(typingBuffer, L"usage") == 0)
+            {
+                print(L"Using ");
+                CHAR16 usedMessage[100];
+                FloatToString(usedMessage, FALSE, (getUsedRam() / 10) / 100.0);
+                print(usedMessage);
+                print(L" KB of ram.\n");
+            }
+            else
+            {
+                print(L"Command or executable file not found.\n");
+            }
+            unallocate(executeString);
         }
     }
-    else
+    if (!typing && done)
+    {
+        running = FALSE;
+        print(terminalDirectory);
+        typingStart = cursorX + cursorY * terminalWidth;
+        typingCurrent = 0;
+        typing = TRUE;
+    }
+    if (exiting)
     {
         cancelWait(&done);
         unallocate(typingBuffer);

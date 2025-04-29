@@ -162,3 +162,8 @@ uint64_t getUsedRam()
     __asm__ volatile ("movq $26, %%rdi; int $0x80; movq %%rax, %0" : "=g"(result) : : "%rdi");
     return result;
 }
+
+void power(BOOLEAN restart)
+{
+    __asm__ volatile ("movq $27, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)restart) : "%rdi", "%rsi");
+}

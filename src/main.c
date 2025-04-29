@@ -457,6 +457,16 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
         case 26:
             return getUsedRam();
             break;
+        case 27:
+            if (arg1)
+            {
+                uefi_call_wrapper(RT->ResetSystem, 4, EfiResetCold, EFI_SUCCESS, 0, NULL);
+            }
+            else
+            {
+                uefi_call_wrapper(RT->ResetSystem, 4, EfiResetShutdown, EFI_SUCCESS, 0, NULL);
+            }
+            break;
         default:
             return syscallHandlers[code](arg1, arg2, arg3, arg4, arg5);
             break;
@@ -610,7 +620,7 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
 void start()
 {
     debug("Filling syscall handlers");
-    for (uint8_t i = 0; i < 27; i++)
+    for (uint8_t i = 0; i < 28; i++)
     {
         syscallHandlers[i] = (void*)1;
     }
@@ -718,6 +728,14 @@ void start()
                     ValueToString(usedMessage, FALSE, (getUsedRam() / 10) / 100.0);
                     print(usedMessage);
                     print(L" KB of ram.\n");
+                }
+                else if (StrCmp(typingBuffer, L"shutdown") == 0)
+                {
+                    uefi_call_wrapper(RT->ResetSystem, 4, EfiResetShutdown, EFI_SUCCESS, 0, NULL);
+                }
+                else if (StrCmp(typingBuffer, L"restart") == 0)
+                {
+                    uefi_call_wrapper(RT->ResetSystem, 4, EfiResetCold, EFI_SUCCESS, 0, NULL);
                 }
                 else
                 {

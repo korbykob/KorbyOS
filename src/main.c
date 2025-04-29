@@ -530,93 +530,6 @@ void terminalPrint(const CHAR16* message)
     drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
 }
 
-void keyPress(uint8_t scancode, BOOLEAN pressed)
-{
-    if (typing)
-    {
-        switch (scancode)
-        {
-            case 14:
-                if (pressed && cursorX + cursorY * terminalWidth > typingStart)
-                {
-                    typingCurrent--;
-                    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, black);
-                    if (cursorX > 0)
-                    {
-                        cursorX--;
-                    }
-                    else
-                    {
-                        cursorX = terminalWidth - 1;
-                        cursorY--;
-                    }
-                    drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
-                }
-                break;
-            case 28:
-                if (pressed)
-                {
-                    typingBuffer[typingCurrent] = L'\0';
-                    print(L"\n");
-                    typing = FALSE;
-                }
-                break;
-            case 42:
-                leftShift = pressed;
-                shift = leftShift || rightShift;
-                break;
-            case 54:
-                rightShift = pressed;
-                shift = leftShift || rightShift;
-                break;
-            case 58:
-                if (pressed)
-                {
-                    caps = !caps;
-                }
-                break;
-            default:
-                if (pressed)
-                {
-                    char character = (caps ? !shift : shift) ? capsScancodes[scancode] : scancodes[scancode];
-                    if (character)
-                    {
-                        typingBuffer[typingCurrent] = character;
-                        typingCurrent++;
-                        CHAR16 message[2];
-                        message[0] = character;
-                        message[1] = L'\0';
-                        print(message);
-                    }
-                }
-                break;
-        }
-    }
-    PointerArray* call = (PointerArray*)&keyCalls;
-    while (iterateList(&call))
-    {
-        ((void (*)(uint8_t scancode, BOOLEAN pressed))call->pointer)(scancode, pressed);
-    }
-}
-
-void mouseMove(int16_t x, int16_t y)
-{
-    PointerArray* call = (PointerArray*)&moveCalls;
-    while (iterateList(&call))
-    {
-        ((void (*)(int16_t x, int16_t y))call->pointer)(x, y);
-    }
-}
-
-void mouseClick(BOOLEAN left, BOOLEAN pressed)
-{
-    PointerArray* call = (PointerArray*)&clickCalls;
-    while (iterateList(&call))
-    {
-        ((void (*)(BOOLEAN left, BOOLEAN pressed))call->pointer)(left, pressed);
-    }
-}
-
 void start()
 {
     debug("Filling syscall handlers");
@@ -655,6 +568,93 @@ void start()
     debug("Starting loop");
     while (TRUE)
     {
+        for (uint16_t i = 0; i < currentKeyPress; i++)
+        {
+            if (typing)
+            {
+                switch (keyPresses[i].scancode)
+                {
+                    case 14:
+                        if (keyPresses[i].pressed && cursorX + cursorY * terminalWidth > typingStart)
+                        {
+                            typingCurrent--;
+                            drawRectangle(cursorX * 16, cursorY * 32, 16, 32, black);
+                            if (cursorX > 0)
+                            {
+                                cursorX--;
+                            }
+                            else
+                            {
+                                cursorX = terminalWidth - 1;
+                                cursorY--;
+                            }
+                            drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
+                        }
+                        break;
+                    case 28:
+                        if (keyPresses[i].pressed)
+                        {
+                            typingBuffer[typingCurrent] = L'\0';
+                            print(L"\n");
+                            typing = FALSE;
+                        }
+                        break;
+                    case 42:
+                        leftShift = keyPresses[i].pressed;
+                        shift = leftShift || rightShift;
+                        break;
+                    case 54:
+                        rightShift = keyPresses[i].pressed;
+                        shift = leftShift || rightShift;
+                        break;
+                    case 58:
+                        if (keyPresses[i].pressed)
+                        {
+                            caps = !caps;
+                        }
+                        break;
+                    default:
+                        if (keyPresses[i].pressed)
+                        {
+                            char character = (caps ? !shift : shift) ? capsScancodes[keyPresses[i].scancode] : scancodes[keyPresses[i].scancode];
+                            if (character)
+                            {
+                                typingBuffer[typingCurrent] = character;
+                                typingCurrent++;
+                                CHAR16 message[2];
+                                message[0] = character;
+                                message[1] = L'\0';
+                                print(message);
+                            }
+                        }
+                        break;
+                }
+            }
+            PointerArray* call = (PointerArray*)&keyCalls;
+            while (iterateList(&call))
+            {
+                ((void (*)(uint8_t scancode, BOOLEAN pressed))call->pointer)(keyPresses[i].scancode, keyPresses[i].pressed);
+            }
+        }
+        currentKeyPress = 0;
+        for (uint16_t i = 0; i < currentMouseMove; i++)
+        {
+            PointerArray* call = (PointerArray*)&moveCalls;
+            while (iterateList(&call))
+            {
+                ((void (*)(int16_t x, int16_t y))call->pointer)(mouseMoves[i].x, mouseMoves[i].y);
+            }
+        }
+        currentMouseMove = 0;
+        for (uint16_t i = 0; i < currentMouseClick; i++)
+        {
+            PointerArray* call = (PointerArray*)&clickCalls;
+            while (iterateList(&call))
+            {
+                ((void (*)(BOOLEAN left, BOOLEAN pressed))call->pointer)(mouseClicks[i].left, mouseClicks[i].pressed);
+            }
+        }
+        currentMouseClick = 0;
         if (!typing && terminalPid == UINT64_MAX)
         {
             if (StrLen(typingBuffer) > 0)

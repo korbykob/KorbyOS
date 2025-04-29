@@ -73,6 +73,25 @@ uint64_t apicAddress = 0;
 uint64_t cpuCount = 0;
 uint8_t* cpus = NULL;
 uint64_t soundDuration = 0;
+struct
+{
+    uint8_t scancode;
+    BOOLEAN pressed;
+} keyPresses[255];
+uint8_t currentKeyPress = 0;
+struct
+{
+    int16_t x;
+    int16_t y;
+} mouseMoves[255];
+uint8_t currentMouseMove = 0;
+struct
+{
+    BOOLEAN left;
+    BOOLEAN pressed;
+} mouseClicks[255];
+uint8_t currentMouseClick = 0;
+
 
 void* allocate(uint64_t amount)
 {
@@ -803,8 +822,6 @@ __attribute__((interrupt, target("general-regs-only"))) void hpet(InterruptFrame
     outb(0x20, 0x20);
 }
 
-void keyPress(uint8_t scancode, BOOLEAN pressed);
-
 __attribute__((interrupt, target("general-regs-only"))) void keyboard(InterruptFrame* frame)
 {
     uint8_t scancode = inb(0x60);
@@ -813,13 +830,11 @@ __attribute__((interrupt, target("general-regs-only"))) void keyboard(InterruptF
     {
         scancode = scancode & 0b01111111;
     }
-    keyPress(scancode, !unpressed);
+    keyPresses[currentKeyPress].scancode = scancode;
+    keyPresses[currentKeyPress].pressed = !unpressed;
+    currentKeyPress++;
     outb(0x20, 0x20);
 }
-
-void mouseMove(int16_t x, int16_t y);
-
-void mouseClick(BOOLEAN left, BOOLEAN pressed);
 
 __attribute__((interrupt, target("general-regs-only"))) void mouse(InterruptFrame* frame)
 {
@@ -832,18 +847,24 @@ __attribute__((interrupt, target("general-regs-only"))) void mouse(InterruptFram
         int16_t y = mouseBytes[2] - ((mouseBytes[0] << 3) & 0x100);
         if (x != 0 || y != 0)
         {
-            mouseMove(x, y);
+            mouseMoves[currentMouseMove].x = x;
+            mouseMoves[currentMouseMove].y = y;
+            currentMouseMove++;
         }
         BOOLEAN leftClick = mouseBytes[0] & 0b00000001;
         if (leftClick != lastLeftClick)
         {
-            mouseClick(TRUE, !lastLeftClick);
+            mouseClicks[currentMouseClick].left = TRUE;
+            mouseClicks[currentMouseClick].pressed = !lastLeftClick;
+            currentMouseClick++;
             lastLeftClick = leftClick;
         }
         BOOLEAN rightClick = mouseBytes[0] & 0b00000010;
         if (rightClick != lastRightClick)
         {
-            mouseClick(FALSE, !lastRightClick);
+            mouseClicks[currentMouseClick].left = FALSE;
+            mouseClicks[currentMouseClick].pressed = !lastRightClick;
+            currentMouseClick++;
             lastRightClick = rightClick;
         }
     }

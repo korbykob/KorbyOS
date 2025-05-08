@@ -687,7 +687,7 @@ __attribute__((target("general-regs-only"))) void panic(uint8_t isr)
 {
     __asm__ volatile ("cli");
     outb(0x61, inb(0x61) & 0b11111101);
-    initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
+    initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"/fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
     CHAR16 characters[100];
     ValueToString(characters, FALSE, isr);
@@ -708,7 +708,7 @@ __attribute__((target("general-regs-only"))) void panicCode(uint8_t isr, uint64_
 {
     __asm__ volatile ("cli");
     outb(0x61, inb(0x61) & 0b11111101);
-    initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"fonts/font.psf", NULL));
+    initGraphics((EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)GOP->Mode->FrameBufferBase, GOP->Mode->Info->HorizontalResolution, readFile(L"/fonts/font.psf", NULL));
     drawRectangle(0, 0, GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, black);
     CHAR16 characters[100];
     ValueToString(characters, FALSE, isr);

@@ -252,7 +252,7 @@ void waitForCores(uint64_t count)
         uint64_t done = 0;
         for (uint64_t i = 0; i < count - 1; i++)
         {
-            done += *(uint64_t*)(0x5008 + i * 8);
+            done |= *(uint64_t*)(0x1005 + i * 8);
         }
         if (done == 0)
         {
@@ -266,7 +266,7 @@ void splitTask(void (*task)(uint64_t id), uint64_t count)
     waitForCores(count);
     for (uint64_t i = 0; i < count - 1; i++)
     {
-        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)task;
+        *(uint64_t*)(0x1005 + i * 8) = (uint64_t)task;
     }
     task(0);
     waitForCores(count);

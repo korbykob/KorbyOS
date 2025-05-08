@@ -1310,46 +1310,20 @@ void completed()
             break;
         }
     }
-    debug("Identity mapping other cores");
-    uint64_t* PML4T = (uint64_t*)0x1000;
-    for (uint16_t i = 0; i < 512; i++)
-    {
-        PML4T[i] = 0;
-    }
-    uint64_t* PDPT = (uint64_t*)0x2000;
-    for (uint16_t i = 0; i < 512; i++)
-    {
-        PDPT[i] = 0;
-    }
-    PML4T[0] = (uint64_t)PDPT | 0b11;
-    uint64_t* PDT = (uint64_t*)0x3000;
-    for (uint16_t i = 0; i < 512; i++)
-    {
-        PDT[i] = 0;
-    }
-    PDPT[0] = (uint64_t)PDT | 0b11;
-    uint64_t* PT = (uint64_t*)0x4000;
-    uint64_t address = 0;
-    for (uint16_t i = 0; i < 512; i++)
-    {
-        PT[i] = address | 0b11;
-        address += 0x1000;
-    }
-    PDT[0] = (uint64_t)PT | 0b11;
+    debug("Saving paging address");
     uint64_t cr3 = 0;
-    debug("Saving default paging");
     __asm__ volatile ("mov %%cr3, %0" : "=g"(cr3));
-    *(uint64_t*)0x5000 = cr3;
+    *(uint32_t*)0x1000 = cr3;
     uint64_t smpSize = 0;
     uint8_t* data = readFile(L"/system/smp.boot", &smpSize);
     debug("Loading core binary");
-    copyMemory(data, (uint8_t*)0xF000, smpSize);
-    *(uint8_t*)0xEFFF = 0;
+    copyMemory(data, (uint8_t*)0x2000, smpSize);
+    *(uint8_t*)0x1004 = 0;
     debug("Initialising cores");
     for (uint64_t i = 0; i < cpuCount; i++)
     {
         debug("Initialising core");
-        *(uint64_t*)(0x5008 + i * 8) = (uint64_t)allocate(0x8000) + 0x8000;
+        *(uint64_t*)(0x1005 + i * 8) = (uint64_t)allocate(0x8000) + 0x8000;
         *(uint32_t*)(apicAddress + 0x310) = cpus[i] << 24;
         *(uint32_t*)(apicAddress + 0x300) = 0x4500;
         while (*(uint32_t*)(apicAddress + 0x300) & 0x1000);
@@ -1359,13 +1333,13 @@ void completed()
     {
         debug("Starting core");
         *(uint32_t*)(apicAddress + 0x310) = cpus[i] << 24;
-        *(uint32_t*)(apicAddress + 0x300) = 0x460F;
+        *(uint32_t*)(apicAddress + 0x300) = 0x4602;
         while (*(uint32_t*)(apicAddress + 0x300) & 0x1000);
         hpetCounter = 0;
-        while (hpetCounter < 1);
+        while (hpetCounter == 0);
     }
     debug("Waiting for cores");
-    while (*(uint8_t*)0xEFFF != cpuCount);
+    while (*(uint8_t*)0x1004 != cpuCount);
     debug("Starting OS");
     start();
     __asm__ volatile ("cli; hlt");

@@ -1,13 +1,16 @@
-org 0xF000
+org 0x2000
 bits 16
 
 mov eax, cr0
 and eax, 01111111111111111111111111111111b
+and ax, 0xFFF
+or ax, 0x2
 mov cr0, eax
-mov edi, 0x1000
+mov edi, [0x1000]
 mov cr3, edi
 mov eax, cr4
 or eax, 100000b
+or ax, 11000000000b
 mov cr4, eax
 mov ecx, 0xC0000080
 rdmsr
@@ -38,25 +41,16 @@ boot:
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    mov rdi, [0x5000]
-    mov cr3, rdi
-    mov rax, cr0
-    and ax, 0xFFF
-    or ax, 0x2
-    mov cr0, rax
-    mov rax, cr4
-    or ax, 11000000000b
-    mov cr4, rax
     mov rax, 0
-    mov al, [0xEFFF]
+    mov al, [0x1004]
     mov rdi, rax
     inc rdi
     mov rbx, 8
     mul rbx
-    add rax, 0x5008
+    add rax, 0x1005
     mov rsp, [rax]
     mov rbp, rsp
-    inc byte[0xEFFF]
+    inc byte[0x1004]
     mov qword[rax], 0
 
 ready:

@@ -91,7 +91,79 @@ struct
     BOOLEAN pressed;
 } mouseClicks[255];
 uint8_t currentMouseClick = 0;
-
+typedef struct
+{
+    uint32_t lower;
+    uint32_t upper;
+    uint16_t size;
+    uint16_t fragmentChecksum;
+    uint8_t done: 1;
+    uint8_t end: 1;
+    uint8_t reserved1: 1;
+    uint8_t vp: 1;
+    uint8_t udpChecksum: 1;
+    uint8_t l4Checksum: 1;
+    uint8_t ipv4Checksum: 1;
+    uint8_t filterExact: 1;
+    uint8_t reserved2: 5;
+    uint8_t tcpUdpError: 1;
+    uint8_t ipv4Error: 1;
+    uint8_t error: 1;
+    uint16_t vlan;
+} __attribute__((packed)) E1000RxDescriptor;
+typedef struct
+{
+    uint32_t lower;
+    uint32_t upper;
+    uint16_t size;
+    uint8_t checksumOffset;
+    uint8_t end: 1;
+    uint8_t insertFcs: 1;
+    uint8_t insertChecksum: 1;
+    uint8_t reportStatus: 1;
+    uint8_t reserved1: 1;
+    uint8_t descriptorExtension: 1;
+    uint8_t vlanEnable: 1;
+    uint8_t reserved2: 1;
+    uint8_t done: 1;
+    uint8_t reserved: 7;
+    uint8_t checksumStart;
+    uint16_t vlan;
+} __attribute__((packed)) E1000TxDescriptor;
+typedef struct
+{
+    uint16_t size;
+    uint16_t reserved: 14;
+    uint16_t end: 1;
+    uint16_t done: 1;
+    uint32_t vlan;
+    uint32_t lower;
+    uint32_t upper;
+} __attribute__((packed)) Rtl8169RxDescriptor;
+typedef struct
+{
+    uint16_t size;
+    uint16_t reserved: 12;
+    uint16_t last_segment_descriptor: 1;
+    uint16_t first_segment_descriptor: 1;
+    uint16_t end: 1;
+    uint16_t done: 1;
+    uint32_t vlan;
+    uint32_t lower;
+    uint32_t upper;
+} __attribute__((packed)) Rtl8169TxDescriptor;
+uint64_t bar = 0;
+uint8_t mac[6];
+void* rxDescriptors = NULL;
+void* txDescriptors = NULL;
+void (*sendPacket)(uint8_t* data, uint16_t size) = NULL;
+uint64_t txCurrent = 0;
+struct
+{
+    uint8_t data[2048];
+    uint16_t size;
+} ethernetPackets[255];
+uint8_t currentEthernetPacket = 0;
 
 void* allocate(uint64_t amount)
 {
@@ -872,6 +944,109 @@ __attribute__((interrupt, target("general-regs-only"))) void mouse(InterruptFram
     outb(0x20, 0x20);
 }
 
+uint8_t pciInb(uint32_t bus, uint32_t device, uint32_t function, uint32_t offset)
+{
+    outd(0xCF8, (0x80000000 | (bus << 16) | (device << 11) | (function << 8) | (offset & ~0x3)));
+    return (uint8_t)(ind(0xCFC) >> ((offset & 0x3) * 8));
+}
+
+uint16_t pciInw(uint32_t bus, uint32_t device, uint32_t function, uint32_t offset)
+{
+    outd(0xCF8, (0x80000000 | (bus << 16) | (device << 11) | (function << 8) | (offset & ~0x3)));
+    return (uint16_t)(ind(0xCFC) >> ((offset & 0x3) * 8));
+}
+
+uint32_t pciInd(uint32_t bus, uint32_t device, uint32_t function, uint32_t offset)
+{
+    outd(0xCF8, (0x80000000 | (bus << 16) | (device << 11) | (function << 8) | offset));
+    return ind(0xCFC);
+}
+
+void pciOutd(uint32_t bus, uint32_t device, uint32_t function, uint32_t offset, uint32_t value)
+{
+    outd(0xCF8, (0x80000000 | (bus << 16) | (device << 11) | (function << 8) | offset));
+    outd(0xCFC, value);
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void e1000(InterruptFrame* frame)
+{
+    uint32_t status = (*(uint32_t*)(bar + 0xC0) & 0xFFFFF);
+    if (status)
+    {
+        if (status & 0x80)
+        {
+            uint32_t tail = (*(uint32_t*)(bar + 0x2818) + 1);
+            if (tail >= 256)
+            {
+                tail = 0;
+            }
+            if ((((E1000RxDescriptor*)rxDescriptors)[tail].error | ((E1000RxDescriptor*)rxDescriptors)[tail].ipv4Error | ((E1000RxDescriptor*)rxDescriptors)[tail].tcpUdpError) == 0)
+            {
+                copyMemory((uint8_t*)((uint64_t)((E1000RxDescriptor*)rxDescriptors)[tail].lower | ((uint64_t)((E1000RxDescriptor*)rxDescriptors)[tail].upper << 32)), ethernetPackets[currentEthernetPacket].data, ((E1000RxDescriptor*)rxDescriptors)[tail].size);
+                ethernetPackets[currentEthernetPacket].size = ((E1000RxDescriptor*)rxDescriptors)[tail].size;
+                currentEthernetPacket++;
+            }
+            ((E1000RxDescriptor*)rxDescriptors)[tail].done = 0;
+            *(uint32_t*)(bar + 0x2818) = tail;
+        }
+        *(uint32_t*)(bar + 0xC0) = status;
+    }
+    outb(0xA0, 0x20);
+    outb(0x20, 0x20);
+}
+
+void e1000Send(uint8_t* data, uint16_t size)
+{
+    uint32_t current = *(uint32_t*)(bar + 0x3818);
+    uint32_t next = (current + 1);
+    if (next >= 256)
+    {
+        next = 0;
+    }
+    copyMemory(data, (uint8_t*)((uint64_t)((E1000TxDescriptor*)txDescriptors)[current].lower | ((uint64_t)((E1000TxDescriptor*)txDescriptors)[current].upper << 32)), size);
+    ((E1000TxDescriptor*)txDescriptors)[current].size = size;
+    ((E1000TxDescriptor*)txDescriptors)[current].end = 1;
+    ((E1000TxDescriptor*)txDescriptors)[current].done = 0;
+    *(uint32_t*)(bar + 0x3818) = next;
+}
+
+__attribute__((interrupt, target("general-regs-only"))) void rtl8169(InterruptFrame* frame)
+{
+    uint16_t status = inw(bar + 0x3E);
+    if (status)
+    {
+        if ((status & 0x11) != 0x00)
+        {
+            for (uint32_t i = 0; i < 256; i++)
+            {
+                if (((Rtl8169RxDescriptor*)rxDescriptors)[i].done != 1)
+                {
+                    copyMemory((uint8_t*)((uint64_t)((Rtl8169RxDescriptor*)rxDescriptors)[i].lower | ((uint64_t)((Rtl8169RxDescriptor*)rxDescriptors)[i].upper << 32)), ethernetPackets[currentEthernetPacket].data, ((Rtl8169RxDescriptor*)rxDescriptors)[i].size);
+                    ethernetPackets[currentEthernetPacket].size = ((Rtl8169RxDescriptor*)rxDescriptors)[i].size;
+                    currentEthernetPacket++;
+                    ((Rtl8169RxDescriptor*)rxDescriptors)[i].size = 2048;
+                    ((Rtl8169RxDescriptor*)rxDescriptors)[i].vlan = 0;
+                    ((Rtl8169RxDescriptor*)rxDescriptors)[i].done = 1;
+                }
+            }
+        }
+        outw(bar + 0x3E, status);
+    }
+    outb(0xA0, 0x20);
+    outb(0x20, 0x20);
+}
+
+void rtl8169Send(uint8_t* data, uint16_t size)
+{
+    copyMemory(data, (uint8_t*)((uint64_t)((Rtl8169TxDescriptor*)txDescriptors)[txCurrent].lower | ((uint64_t)((Rtl8169TxDescriptor*)txDescriptors)[txCurrent].upper << 32)), size);
+    ((Rtl8169TxDescriptor*)txDescriptors)[txCurrent].size = size;
+    ((Rtl8169TxDescriptor*)txDescriptors)[txCurrent].first_segment_descriptor = 1;
+    ((Rtl8169TxDescriptor*)txDescriptors)[txCurrent].last_segment_descriptor = 1;
+    ((Rtl8169TxDescriptor*)txDescriptors)[txCurrent].done = 1;
+    outb(bar + 0x38, (1 << 6));
+    txCurrent++;
+}
+
 __attribute__((naked)) void syscallHandler()
 {
     __asm__ volatile ("cld; call syscallHandle; iretq");
@@ -966,6 +1141,175 @@ void completed()
     outb(0x64, 0xD4);
     outb(0x60, 0xF4);
     inb(0x60);
+    debug("Initialising PCI devices");
+    BOOLEAN found = FALSE;
+    for (uint16_t bus = 0; bus < 256; bus++)
+    {
+        for (uint8_t device = 0; device < 32; device++)
+        {
+            for (uint8_t function = 0; function < 8; function++)
+            {
+                uint32_t id = pciInd(bus, device, function, 0);
+                if (id == 0x10D38086)
+                {
+                    debug("Found e1000e");
+                    found = TRUE;
+                    debug("Getting first bar address");
+                    bar = pciInd(bus, device, function, 0x10) & 0xFFFFFFF0;
+                    debug("Enabling bus mastering");
+                    pciOutd(bus, device, function, 0x04, pciInd(bus, device, function, 0x04) | (1 << 2));
+                    debug("Reading MAC address");
+                    *(uint32_t*)(bar + 0x00) = (1 << 26);
+                    while (*(uint32_t*)(bar + 0x00) & (1 << 26));
+                    for (uint8_t i = 0; i < 3; i++)
+                    {
+                        *(uint32_t*)(bar + 0x14) = ((uint32_t)i << 2) | 1;
+                        uint32_t tmp = 0;
+                        while (!((tmp = *(uint32_t*)(bar + 0x14)) & (1 << 1)));
+                        mac[i * 2] = tmp >> 16;
+                        mac[i * 2 + 1] = tmp >> 24;
+                    }
+                    debug("Enabling card");
+                    *(uint32_t*)(bar + 0x00) = *(uint32_t*)(bar + 0x00) | (1 << 6);
+                    debug("Setting up RX buffers");
+                    rxDescriptors = (E1000RxDescriptor*)(((uint64_t)allocate(sizeof(E1000RxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    for (uint64_t i = 0; i < sizeof(E1000RxDescriptor) * 256; i++)
+                    {
+                        *((uint8_t*)rxDescriptors + i) = 0;
+                    }
+                    debug("Setting up RX memory");
+                    uint8_t* rxMemory = (uint8_t*)allocate(2048 * 256);
+                    for (uint32_t i = 0; i < 256; i++)
+                    {
+                        uint64_t address = (uint64_t)(rxMemory + 2048 * i);
+                        ((E1000RxDescriptor*)rxDescriptors)[i].lower = address;
+                        ((E1000RxDescriptor*)rxDescriptors)[i].upper = address >> 32;
+                    }
+                    debug("Updating RX buffers");
+                    *(uint32_t*)(bar + 0x2800) = (uint64_t)rxDescriptors;
+                    *(uint32_t*)(bar + 0x2804) = (uint64_t)rxDescriptors >> 32;
+                    *(uint32_t*)(bar + 0x2808) = sizeof(E1000RxDescriptor) * 256;
+                    *(uint32_t*)(bar + 0x2810) = 0;
+                    *(uint32_t*)(bar + 0x2818) = 255;
+                    debug("Setting up TX buffers");
+                    txDescriptors = (E1000TxDescriptor*)(((uint64_t)allocate(sizeof(E1000TxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    for (uint64_t i = 0; i < sizeof(E1000TxDescriptor) * 256; i++)
+                    {
+                        *((uint8_t*)txDescriptors + i) = 0;
+                    }
+                    debug("Setting up TX memory");
+                    uint8_t* txMemory = (uint8_t*)allocate(2048 * 256);
+                    for (uint32_t i = 0; i < 256; i++)
+                    {
+                        uint64_t address = (uint64_t)(txMemory + 2048 * i);
+                        ((E1000TxDescriptor*)txDescriptors)[i].lower = address;
+                        ((E1000TxDescriptor*)txDescriptors)[i].upper = address >> 32;
+                    }
+                    debug("Updating TX buffers");
+                    *(uint32_t*)(bar + 0x3800) = (uint64_t)txDescriptors;
+                    *(uint32_t*)(bar + 0x3804) = (uint64_t)txDescriptors >> 32;
+                    *(uint32_t*)(bar + 0x3808) = sizeof(E1000TxDescriptor) * 256;
+                    *(uint32_t*)(bar + 0x3810) = 0;
+                    *(uint32_t*)(bar + 0x3818) = 0;
+                    debug("Enabling receiving packets");
+                    *(uint32_t*)(bar + 0x100) = ((1 << 1) | (1 << 3) | (0 << 5) | (1 << 15));
+                    debug("Enabling sending packets");
+                    *(uint32_t*)(bar + 0x400) = ((1 << 1) | (1 << 3) | (1 << 15) | (0x3F << 12) | (0x3 << 28));
+                    debug("Setting up interrupts for card");
+                    installInterrupt(pciInb(bus, device, function, 0x3C), e1000, TRUE);
+                    *(uint32_t*)(bar + 0xD0) = (1 << 7);
+                    debug("Updating sendPacket function");
+                    sendPacket = e1000Send;
+                    break;
+                }
+                else if (id == 0x816810EC)
+                {
+                    debug("Found rtl8169");
+                    found = TRUE;
+                    debug("Getting first bar address");
+                    bar = pciInw(bus, device, function, 0x10) & 0xFFFC;
+                    debug("Enabling bus mastering");
+                    pciOutd(bus, device, function, 0x04, pciInd(bus, device, function, 0x04) | (1 << 2));
+                    debug("Enabling multiple read and writes");
+                    outw(bar + 0xE0, (1 << 3));
+                    debug("Resetting card");
+                    outb(bar + 0x37, (1 << 4));
+                    while ((inb(bar + 0x37) & (1 << 4)) == (1 << 4));
+                    debug("Reading MAC address");
+                    for (uint8_t i = 0; i < 6; i++)
+                    {
+                        mac[i] = inb(bar + i);
+                    }
+                    debug("Unlocking registers");
+                    outb(bar + 0x50, 0xC0);
+                    debug("Setting up interrupts for card");
+                    installInterrupt(pciInb(bus, device, function, 0x3C), rtl8169, TRUE);
+                    outw(bar + 0x3C, (1 << 0));
+                    debug("Setting up RX buffers");
+                    rxDescriptors = (Rtl8169RxDescriptor*)(((uint64_t)allocate(sizeof(Rtl8169RxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    for (uint64_t i = 0; i < sizeof(Rtl8169RxDescriptor) * 256; i++)
+                    {
+                        *((uint8_t*)rxDescriptors + i) = 0;
+                    }
+                    debug("Setting up RX memory");
+                    uint8_t* rxMemory = (uint8_t*)allocate(2048 * 256);
+                    for (uint32_t i = 0; i < 256; i++)
+                    {
+                        uint64_t address = (uint64_t)(rxMemory + 2048 * i);
+                        ((Rtl8169RxDescriptor*)rxDescriptors)[i].lower = address;
+                        ((Rtl8169RxDescriptor*)rxDescriptors)[i].upper = address >> 32;
+                        ((Rtl8169RxDescriptor*)rxDescriptors)[i].size = 2048;
+                        ((Rtl8169RxDescriptor*)rxDescriptors)[i].done = 1;
+                    }
+                    ((Rtl8169RxDescriptor*)rxDescriptors)[255].end = 1;
+                    debug("Updating RX buffers");
+                    outd(bar + 0x44, (0x1F | (0x7 << 8) | (0x7 << 13)));
+                    outw(bar + 0xDA, 0x1FFF);
+                    outd(bar + 0xE4, (uint64_t)rxDescriptors);
+                    outd(bar + 0xE8, (uint64_t)rxDescriptors >> 32);
+                    debug("Setting up TX buffers");
+                    txDescriptors = (Rtl8169TxDescriptor*)(((uint64_t)allocate(sizeof(Rtl8169TxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    for (uint64_t i = 0; i < sizeof(Rtl8169TxDescriptor) * 256; i++)
+                    {
+                        *((uint8_t*)txDescriptors + i) = 0;
+                    }
+                    debug("Setting up TX memory");
+                    uint8_t* txMemory = (uint8_t*)allocate(2048 * 256);
+                    for (uint32_t i = 0; i < 256; i++)
+                    {
+                        uint64_t address = (uint64_t)(txMemory + 2048 * i);
+                        ((Rtl8169TxDescriptor*)txDescriptors)[i].lower = address;
+                        ((Rtl8169TxDescriptor*)txDescriptors)[i].upper = address >> 32;
+                    }
+                    ((Rtl8169TxDescriptor*)txDescriptors)[255].end = 1;
+                    debug("Updating TX buffers");
+                    outb(bar + 0x37, 0x04);
+                    outb(bar + 0xEC, 0x3F);
+                    outd(bar + 0x40, (0x7 << 8) | (0x3 << 24));
+                    outd(bar + 0x20, (uint64_t)txDescriptors);
+                    outd(bar + 0x24, (uint64_t)txDescriptors >> 32);
+                    debug("Disabling high priority TX buffers");
+                    outd(bar + 0x28, 0);
+                    outd(bar + 0x2C, 0);
+                    debug("Enabling sending and receiving packets");
+                    outb(bar + 0x37, 0x0C);
+                    debug("Locking registers");
+                    outb(bar + 0x50, 0x00);
+                    debug("Updating sendPacket function");
+                    sendPacket = rtl8169Send;
+                    break;
+                }
+            }
+            if (found)
+            {
+                break;
+            }
+        }
+        if (found)
+        {
+            break;
+        }
+    }
     debug("Identity mapping other cores");
     uint64_t* PML4T = (uint64_t*)0x1000;
     for (uint16_t i = 0; i < 512; i++)

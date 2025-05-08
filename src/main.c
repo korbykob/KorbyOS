@@ -113,6 +113,12 @@ typedef struct
     BOOLEAN* done;
 } WaitingProgram;
 WaitingProgram* waitingPrograms = NULL;
+typedef struct
+{
+    uint8_t receiver[6];
+    uint8_t sender[6];
+    uint16_t type;
+} __attribute__((packed)) EthernetLayer;
 
 uint64_t execute(const CHAR16* file)
 {
@@ -655,6 +661,49 @@ void start()
             }
         }
         currentMouseClick = 0;
+        for (uint16_t i = 0; i < currentEthernetPacket; i++)
+        {
+            EthernetLayer* layer = (EthernetLayer*)ethernetPackets[i].data;
+            BOOLEAN found = layer->type != 0x688;
+            for (uint8_t i2 = 0; i2 < 6; i2++)
+            {
+                if (layer->receiver[i2] != mac[i2] && layer->receiver[i2] != 0xFF)
+                {
+                    found = FALSE;
+                }
+            }
+            if (found)
+            {
+                print(L"Receiver MAC: ");
+                for (uint8_t i2 = 0; i2 < 6; i2++)
+                {
+                    CHAR16 characters[3];
+                    ValueToHex(characters, layer->receiver[i2]);
+                    print(characters);
+                    if (i2 != 5)
+                    {
+                        print(L":");
+                    }
+                }
+                print(L"\nSender MAC: ");
+                for (uint8_t i2 = 0; i2 < 6; i2++)
+                {
+                    CHAR16 characters[3];
+                    ValueToHex(characters, layer->sender[i2]);
+                    print(characters);
+                    if (i2 != 5)
+                    {
+                        print(L":");
+                    }
+                }
+                print(L"\nNext layer: ");
+                CHAR16 characters[10];
+                ValueToHex(characters, layer->type);
+                print(characters);
+                print(L"\n");
+            }
+        }
+        currentEthernetPacket = 0;
         if (!typing && terminalPid == UINT64_MAX)
         {
             if (StrLen(typingBuffer) > 0)
@@ -736,6 +785,42 @@ void start()
                 else if (StrCmp(typingBuffer, L"restart") == 0)
                 {
                     uefi_call_wrapper(RT->ResetSystem, 4, EfiResetCold, EFI_SUCCESS, 0, NULL);
+                }
+                else if (StrCmp(typingBuffer, L"vm") == 0)
+                {
+                    EthernetLayer layer;
+                    layer.receiver[0] = 0xD8;
+                    layer.receiver[1] = 0x9E;
+                    layer.receiver[2] = 0xF3;
+                    layer.receiver[3] = 0x14;
+                    layer.receiver[4] = 0x59;
+                    layer.receiver[5] = 0xA9;
+                    layer.sender[0] = 0x52;
+                    layer.sender[1] = 0x54;
+                    layer.sender[2] = 0x00;
+                    layer.sender[3] = 0x12;
+                    layer.sender[4] = 0x34;
+                    layer.sender[5] = 0x56;
+                    layer.type = 0;
+                    sendPacket((uint8_t*)&layer, 60);
+                }
+                else if (StrCmp(typingBuffer, L"pc") == 0)
+                {
+                    EthernetLayer layer;
+                    layer.receiver[0] = 0x52;
+                    layer.receiver[1] = 0x54;
+                    layer.receiver[2] = 0x00;
+                    layer.receiver[3] = 0x12;
+                    layer.receiver[4] = 0x34;
+                    layer.receiver[5] = 0x56;
+                    layer.sender[0] = 0xD8;
+                    layer.sender[1] = 0x9E;
+                    layer.sender[2] = 0xF3;
+                    layer.sender[3] = 0x14;
+                    layer.sender[4] = 0x59;
+                    layer.sender[5] = 0xA9;
+                    layer.type = 0;
+                    sendPacket((uint8_t*)&layer, 60);
                 }
                 else
                 {

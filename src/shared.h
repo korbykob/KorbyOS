@@ -86,6 +86,30 @@ uint8_t inb(uint16_t port)
     return value;
 }
 
+void outw(uint32_t port, uint16_t value)
+{
+    __asm__ volatile ("outw %w0, %w1" : : "a"(value), "Nd"(port) : "memory");
+}
+
+uint16_t inw(uint16_t port)
+{
+    uint16_t value = 0;
+    __asm__ volatile ("inw %w1, %w0" : "=a"(value) : "Nd"(port) : "memory");
+    return value;
+}
+
+void outd(uint32_t port, uint32_t value)
+{
+    __asm__ volatile ("outl %d0, %w1" : : "a"(value), "Nd"(port) : "memory");
+}
+
+uint32_t ind(uint16_t port)
+{
+    uint32_t value = 0;
+    __asm__ volatile ("inl %w1, %d0" : "=a"(value) : "Nd"(port) : "memory");
+    return value;
+}
+
 void debug(const char* string)
 {
     lastDebug = string;

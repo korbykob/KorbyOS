@@ -313,14 +313,6 @@ void update(uint64_t ticks)
                 print(usedMessage);
                 print(L" KB of ram.\n");
             }
-            else if (StrCmp(typingBuffer, L"shutdown") == 0)
-            {
-                power(FALSE);
-            }
-            else if (StrCmp(typingBuffer, L"restart") == 0)
-            {
-                power(TRUE);
-            }
             else
             {
                 print(L"Command or executable file not found.\n");

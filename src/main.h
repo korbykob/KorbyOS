@@ -157,7 +157,7 @@ uint8_t mac[6];
 void* rxDescriptors = NULL;
 void* txDescriptors = NULL;
 void (*sendPacket)(uint8_t* data, uint16_t size) = NULL;
-uint64_t txCurrent = 0;
+uint16_t txCurrent = 0;
 struct
 {
     uint8_t data[2048];

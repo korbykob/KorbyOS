@@ -290,19 +290,19 @@ void update(uint64_t ticks)
             {
                 if (terminalDirectory[1] != L'\0')
                 {
-                    CHAR16* current = terminalDirectory;
-                    uint64_t last = 0;
-                    uint64_t end = 0;
-                    while (*current)
+                    uint64_t length = StrLen(terminalDirectory);
+                    CHAR16* current = terminalDirectory + length - 2;
+                    uint64_t count = 0;
+                    while (*current-- != L'/')
                     {
-                        end++;
-                        if (*current == L'/' && *(current + 1) != L'\0')
-                        {
-                            last = end;
-                        }
-                        current++;
+                        count++;
                     }
-                    terminalDirectory[last] = L'\0';
+                    CHAR16* old = terminalDirectory;
+                    uint64_t newLength = (length - count) * 2;
+                    terminalDirectory = allocate(newLength);
+                    copyMemory((uint8_t*)old, (uint8_t*)terminalDirectory, newLength);
+                    unallocate(old);
+                    terminalDirectory[length - count - 1] = L'\0';
                 }
             }
             else if (StrCmp(typingBuffer, L"usage") == 0)

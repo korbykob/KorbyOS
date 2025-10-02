@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 sudo mkdir -p staging
-sudo mount /dev/sdc1 staging
+sudo mount /dev/sdb1 staging
 sudo mkdir -p staging/efi/boot
 sudo cp bin/main.efi staging/efi/boot/bootx64.efi
 sudo mkdir -p staging/system

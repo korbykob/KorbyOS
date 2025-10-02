@@ -309,9 +309,14 @@ void update(uint64_t ticks)
             {
                 print(L"Using ");
                 CHAR16 usedMessage[100];
-                FloatToString(usedMessage, FALSE, (getUsedRam() / 10) / 100.0);
+                uint64_t total = getUsedRam();
+                uint64_t kb = total / 1000;
+                ValueToString(usedMessage, FALSE, kb);
                 print(usedMessage);
-                print(L" KB of ram.\n");
+                print(L" KB and ");
+                ValueToString(usedMessage, FALSE, total - kb * 1000);
+                print(usedMessage);
+                print(L" bytes of ram.\n");
             }
             else
             {

@@ -753,7 +753,7 @@ void start()
                             count++;
                         }
                         CHAR16* old = terminalDirectory;
-                        uint64_t newLength = (length + 1 - count) * 2;
+                        uint64_t newLength = (length - count) * 2;
                         terminalDirectory = allocate(newLength);
                         copyMemory((uint8_t*)old, (uint8_t*)terminalDirectory, newLength);
                         unallocate(old);

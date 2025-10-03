@@ -575,6 +575,10 @@ void update(uint64_t ticks)
             half = TRUE;
             hour -= 12;
         }
+        else if (hour == 0)
+        {
+            hour = 12;
+        }
         drawString(half ? L"PM" : L"AM", display.width - 37, display.height - 32, white);
         CHAR16 characters[3];
         ValueToString(characters, FALSE, minute);

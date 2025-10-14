@@ -452,23 +452,28 @@ void getIpInfo(IpInfo* info)
 
 Connection* createConnection(uint16_t port)
 {
+    debug("Creating connection");
     ConnectionData* data = addItem(&connections, sizeof(ConnectionData));
     data->port = port;
     data->connection.received = NULL;
     data->connection.send = NULL;
+    debug("Created connection");
     return &data->connection;
 }
 
 void closeConnection(Connection* connection)
 {
+    debug("Closing connection");
     ConnectionData* iterator = (ConnectionData*)&connections;
     while (iterateList(&iterator))
     {
         if (&iterator->connection == connection)
         {
+            debug("Found connection");
             unallocateList(&connection->received);
             unallocateList(&connection->send);
             removeItem(&connections, iterator);
+            debug("Closed connection");
             break;
         }
     }

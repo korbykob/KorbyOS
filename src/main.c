@@ -172,6 +172,7 @@ typedef struct
 } __attribute__((packed)) DhcpLayer;
 uint8_t router[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 uint8_t ip[4] = { 0, 0, 0, 0 };
+uint8_t dns[4] = { 0, 0, 0, 0 };
 typedef struct
 {
     void* next;
@@ -438,6 +439,17 @@ uint64_t getUsedRam()
     return used;
 }
 
+void getIpInfo(IpInfo* info)
+{
+    debug("Getting IP info");
+    for (uint8_t i = 0; i < 4; i++)
+    {
+        info->ip[i] = ip[i];
+        info->dns[i] = dns[i];
+    }
+    debug("Got IP info");
+}
+
 Connection* createConnection(uint16_t port)
 {
     ConnectionData* data = addItem(&connections, sizeof(ConnectionData));
@@ -548,9 +560,12 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
             return getUsedRam();
             break;
         case 27:
-            return (uint64_t)createConnection((uint16_t)arg1);
+            getIpInfo((IpInfo*)arg1);
             break;
         case 28:
+            return (uint64_t)createConnection((uint16_t)arg1);
+            break;
+        case 29:
             closeConnection((Connection*)arg1);
             break;
         default:
@@ -619,7 +634,7 @@ void terminalPrint(const CHAR16* message)
 void start()
 {
     debug("Filling syscall handlers");
-    for (uint8_t i = 0; i < 29; i++)
+    for (uint8_t i = 0; i < 30; i++)
     {
         syscallHandlers[i] = (void*)1;
     }
@@ -707,6 +722,20 @@ void start()
                 for (uint8_t i = 0; i < 4; i++)
                 {
                     ip[i] = recieved->yiaddr[i];
+                }
+                uint8_t* option = packet->data + 240;
+                debug("Reading DHCP options");
+                while (*option != 0xFF)
+                {
+                    if (*option == 0x06)
+                    {
+                        debug("Saving DNS IP");
+                        for (uint8_t i = 0; i < 4; i++)
+                        {
+                            dns[i] = option[2 + i];
+                        }
+                    }
+                    option += *(option + 1) + 2;
                 }
                 debug("Allocating DHCP response");
                 Packet* send = addItem(&dhcpConnection->send, sizeof(Packet) + sizeof(DhcpLayer));
@@ -1100,6 +1129,33 @@ void start()
                     ValueToString(usedMessage, FALSE, total - kb * 1000);
                     print(usedMessage);
                     print(L" bytes of ram.\n");
+                }
+                else if (StrCmp(typingBuffer, L"ip") == 0)
+                {
+                    IpInfo info;
+                    getIpInfo(&info);
+                    print(L"IP address: ");
+                    CHAR16 characters[4];
+                    for (uint8_t i = 0; i < 4; i++)
+                    {
+                        ValueToString(characters, FALSE, info.ip[i]);
+                        print(characters);
+                        if (i != 3)
+                        {
+                            print(L".");
+                        }
+                    }
+                    print(L"\nDNS address: ");
+                    for (uint8_t i = 0; i < 4; i++)
+                    {
+                        ValueToString(characters, FALSE, info.dns[i]);
+                        print(characters);
+                        if (i != 3)
+                        {
+                            print(L".");
+                        }
+                    }
+                    print(L"\n");
                 }
                 else
                 {

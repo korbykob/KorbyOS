@@ -71,6 +71,11 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL red = { 0, 0, 255 };
 typedef struct
 {
+    uint8_t ip[4];
+    uint8_t dns[4];
+} IpInfo;
+typedef struct
+{
     void* next;
     uint8_t ip[4];
     uint16_t port;

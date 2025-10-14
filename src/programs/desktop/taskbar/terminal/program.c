@@ -318,6 +318,33 @@ void update(uint64_t ticks)
                 print(usedMessage);
                 print(L" bytes of ram.\n");
             }
+            else if (StrCmp(typingBuffer, L"ip") == 0)
+            {
+                IpInfo info = {};
+                getIpInfo(&info);
+                print(L"IP address: ");
+                CHAR16 characters[4];
+                for (uint8_t i = 0; i < 4; i++)
+                {
+                    ValueToString(characters, FALSE, info.ip[i]);
+                    print(characters);
+                    if (i != 3)
+                    {
+                        print(L".");
+                    }
+                }
+                print(L"\nDNS address: ");
+                for (uint8_t i = 0; i < 4; i++)
+                {
+                    ValueToString(characters, FALSE, info.dns[i]);
+                    print(characters);
+                    if (i != 3)
+                    {
+                        print(L".");
+                    }
+                }
+                print(L"\n");
+            }
             else
             {
                 print(L"Command or executable file not found.\n");

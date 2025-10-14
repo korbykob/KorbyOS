@@ -69,6 +69,19 @@ EFI_GRAPHICS_OUTPUT_BLT_PIXEL white = { 255, 255, 255 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL black = { 0, 0, 0 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL grey = { 128, 128, 128 };
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL red = { 0, 0, 255 };
+typedef struct
+{
+    void* next;
+    uint8_t ip[4];
+    uint16_t port;
+    uint16_t length;
+    uint8_t data[];
+} Packet;
+typedef struct
+{
+    Packet* received;
+    Packet* send;
+} Connection;
 
 void* allocate(uint64_t amount);
 

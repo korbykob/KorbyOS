@@ -115,10 +115,70 @@ typedef struct
 WaitingProgram* waitingPrograms = NULL;
 typedef struct
 {
-    uint8_t receiver[6];
-    uint8_t sender[6];
+    uint8_t destination[6];
+    uint8_t source[6];
     uint16_t type;
 } __attribute__((packed)) EthernetLayer;
+typedef struct
+{
+    uint8_t version: 4;
+    uint8_t ihl: 4;
+    uint8_t type;
+    uint16_t length;
+    uint16_t identification;
+    uint16_t flags;
+    uint8_t ttl;
+    uint8_t protocol;
+    uint16_t checksum;
+    uint8_t source[4];
+    uint8_t destination[4];
+} __attribute__((packed)) Ipv4Layer;
+typedef struct
+{
+    uint16_t source;
+    uint16_t destination;
+    uint16_t length;
+    uint16_t checksum;
+} __attribute__((packed)) UdpLayer;
+typedef struct
+{
+    uint16_t hardwareType;
+    uint16_t protocolType;
+    uint8_t hardwareSize;
+    uint8_t protocolSize;
+    uint16_t opcode;
+    uint8_t sourceMac[6];
+    uint8_t sourceIp[4];
+    uint8_t destinationMac[6];
+    uint8_t destinationIp[4];
+} __attribute__((packed)) ArpLayer;
+typedef struct
+{
+    uint8_t op;
+    uint8_t htype;
+    uint8_t hlen;
+    uint8_t hops;
+    uint32_t xid; 
+    uint16_t secs;
+    uint16_t flags; 
+    uint8_t ciaddr[4];
+    uint8_t yiaddr[4];
+    uint8_t siaddr[4];
+    uint8_t giaddr[4];
+    uint8_t chaddr[16];
+    uint8_t sname[64];
+    uint8_t file[128]; 
+    uint8_t options[312];
+} __attribute__((packed)) DhcpLayer;
+uint8_t router[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+uint8_t ip[4] = { 0, 0, 0, 0 };
+typedef struct
+{
+    void* next;
+    uint16_t port;
+    Connection connection;
+} ConnectionData;
+ConnectionData* connections = NULL;
 
 uint64_t execute(const CHAR16* file)
 {
@@ -378,6 +438,30 @@ uint64_t getUsedRam()
     return used;
 }
 
+Connection* createConnection(uint16_t port)
+{
+    ConnectionData* data = addItem(&connections, sizeof(ConnectionData));
+    data->port = port;
+    data->connection.received = NULL;
+    data->connection.send = NULL;
+    return &data->connection;
+}
+
+void closeConnection(Connection* connection)
+{
+    ConnectionData* iterator = (ConnectionData*)&connections;
+    while (iterateList(&iterator))
+    {
+        if (&iterator->connection == connection)
+        {
+            unallocateList(&connection->received);
+            unallocateList(&connection->send);
+            removeItem(&connections, iterator);
+            break;
+        }
+    }
+}
+
 uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5)
 {
     switch (code)
@@ -463,6 +547,12 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
         case 26:
             return getUsedRam();
             break;
+        case 27:
+            return (uint64_t)createConnection((uint16_t)arg1);
+            break;
+        case 28:
+            closeConnection((Connection*)arg1);
+            break;
         default:
             return syscallHandlers[code](arg1, arg2, arg3, arg4, arg5);
             break;
@@ -529,7 +619,7 @@ void terminalPrint(const CHAR16* message)
 void start()
 {
     debug("Filling syscall handlers");
-    for (uint8_t i = 0; i < 27; i++)
+    for (uint8_t i = 0; i < 29; i++)
     {
         syscallHandlers[i] = (void*)1;
     }
@@ -561,9 +651,113 @@ void start()
     ValueToString(coreMessage, FALSE, cpuCount + 1);
     print(coreMessage);
     print(L"\n\n");
+    debug("Creating DHCP connection");
+    Connection* dhcpConnection = createConnection(68);
+    debug("Allocating DHCP request");
+    Packet* dhcpPacket = addItem(&dhcpConnection->send, sizeof(Packet) + sizeof(DhcpLayer));
+    for (uint8_t i = 0; i < 4; i++)
+    {
+        dhcpPacket->ip[i] = 255;
+    }
+    dhcpPacket->port = 67;
+    dhcpPacket->length = sizeof(DhcpLayer);
+    DhcpLayer* dhcpRequest = (DhcpLayer*)dhcpPacket->data;
+    debug("Clearing out DHCP data");
+    for (uint16_t i = 0; i < sizeof(DhcpLayer); i++)
+    {
+        ((uint8_t*)dhcpRequest)[i] = 0;
+    }
+    debug("Setting up DHCP request");
+    dhcpRequest->op = 1;
+    dhcpRequest->htype = 1;
+    dhcpRequest->hlen = 6;
+    dhcpRequest->xid = 0x78563412;
+    for (uint8_t i = 0; i < 4; i++)
+    {
+        dhcpRequest->yiaddr[i] = 0;
+    }
+    for (uint8_t i = 0; i < 6; i++)
+    {
+        dhcpRequest->chaddr[i] = mac[i];
+    }
+    dhcpRequest->options[0] = 0x63;
+    dhcpRequest->options[1] = 0x82;
+    dhcpRequest->options[2] = 0x53;
+    dhcpRequest->options[3] = 0x63;
+    dhcpRequest->options[4] = 0x35;
+    dhcpRequest->options[5] = 0x01;
+    dhcpRequest->options[6] = 0x01;
+    dhcpRequest->options[7] = 0x37;
+    dhcpRequest->options[8] = 0x03;
+    dhcpRequest->options[9] = 1;
+    dhcpRequest->options[10] = 3;
+    dhcpRequest->options[11] = 6;
+    dhcpRequest->options[12] = 0xFF;
     debug("Starting loop");
     while (TRUE)
     {
+        if (!ip[0])
+        {
+            Packet* packet = (Packet*)&dhcpConnection->received;
+            while (iterateList(&packet))
+            {
+                debug("Got DHCP response");
+                DhcpLayer* recieved = (DhcpLayer*)packet->data;
+                debug("Updating new IP address from response");
+                for (uint8_t i = 0; i < 4; i++)
+                {
+                    ip[i] = recieved->yiaddr[i];
+                }
+                debug("Allocating DHCP response");
+                Packet* send = addItem(&dhcpConnection->send, sizeof(Packet) + sizeof(DhcpLayer));
+                for (uint8_t i = 0; i < 4; i++)
+                {
+                    send->ip[i] = packet->ip[i];
+                }
+                send->port = 67;
+                send->length = sizeof(DhcpLayer);
+                dhcpRequest = (DhcpLayer*)send->data;
+                debug("Clearing out DHCP data");
+                for (uint16_t i = 0; i < sizeof(DhcpLayer); i++)
+                {
+                    ((uint8_t*)dhcpRequest)[i] = 0;
+                }
+                debug("Setting up DHCP response");
+                dhcpRequest->op = 1;
+                dhcpRequest->htype = 1;
+                dhcpRequest->hlen = 6;
+                dhcpRequest->xid = 0x78563412;
+                for (uint8_t i = 0; i < 4; i++)
+                {
+                    dhcpRequest->yiaddr[i] = 0;
+                }
+                for (uint8_t i = 0; i < 6; i++)
+                {
+                    dhcpRequest->chaddr[i] = mac[i];
+                }
+                dhcpRequest->options[0] = 0x63;
+                dhcpRequest->options[1] = 0x82;
+                dhcpRequest->options[2] = 0x53;
+                dhcpRequest->options[3] = 0x63;
+                dhcpRequest->options[4] = 0x35;
+                dhcpRequest->options[5] = 0x01;
+                dhcpRequest->options[6] = 0x03;
+                dhcpRequest->options[7] = 0x32;
+                dhcpRequest->options[8] = 0x04;
+                dhcpRequest->options[9] = recieved->yiaddr[0];
+                dhcpRequest->options[10] = recieved->yiaddr[1];
+                dhcpRequest->options[11] = recieved->yiaddr[2];
+                dhcpRequest->options[12] = recieved->yiaddr[3];
+                dhcpRequest->options[13] = 0x36;
+                dhcpRequest->options[14] = 0x04;
+                dhcpRequest->options[15] = packet->ip[0];
+                dhcpRequest->options[16] = packet->ip[1];
+                dhcpRequest->options[17] = packet->ip[2];
+                dhcpRequest->options[18] = packet->ip[3];
+                dhcpRequest->options[19] = 0xFF;
+                break;
+            }
+        }
         for (uint16_t i = 0; i < currentKeyPress; i++)
         {
             if (typing)
@@ -653,47 +847,181 @@ void start()
         currentMouseClick = 0;
         for (uint16_t i = 0; i < currentEthernetPacket; i++)
         {
-            EthernetLayer* layer = (EthernetLayer*)ethernetPackets[i].data;
-            BOOLEAN found = layer->type != 0x688;
+            EthernetLayer* ethernet = (EthernetLayer*)ethernetPackets[i].data;
+            BOOLEAN found = TRUE;
             for (uint8_t i2 = 0; i2 < 6; i2++)
             {
-                if (layer->receiver[i2] != mac[i2] && layer->receiver[i2] != 0xFF)
+                if (ethernet->destination[i2] != mac[i2] && ethernet->destination[i2] != 0xFF)
                 {
                     found = FALSE;
                 }
             }
             if (found)
             {
-                print(L"Receiver MAC: ");
-                for (uint8_t i2 = 0; i2 < 6; i2++)
+                if (ethernet->type == 0x608)
                 {
-                    CHAR16 characters[3];
-                    ValueToHex(characters, layer->receiver[i2]);
-                    print(characters);
-                    if (i2 != 5)
+                    ArpLayer* arp = (ArpLayer*)((uint64_t)ethernet + sizeof(EthernetLayer));
+                    found = TRUE;
+                    for (uint8_t i2 = 0; i2 < 6; i2++)
                     {
-                        print(L":");
+                        if (arp->destinationMac[i2] != mac[i])
+                        {
+                            found = FALSE;
+                        }
+                    }
+                    if (!found)
+                    {
+                        found = TRUE;
+                        for (uint8_t i2 = 0; i2 < 4; i2++)
+                        {
+                            if (arp->destinationIp[i2] != ip[i2])
+                            {
+                                found = FALSE;
+                            }
+                        }
+                    }
+                    if (found && arp->opcode == 0x0100)
+                    {
+                        uint8_t* data = allocate(sizeof(EthernetLayer) + sizeof(ArpLayer));
+                        EthernetLayer* responseEthernet = (EthernetLayer*)data;
+                        for (uint8_t i2 = 0; i2 < 6; i2++)
+                        {
+                            responseEthernet->source[i2] = mac[i2];
+                            responseEthernet->destination[i2] = ethernet->source[i2];
+                        }
+                        responseEthernet->type = 0x608;
+                        ArpLayer* responseArp = (ArpLayer*)((uint64_t)responseEthernet + sizeof(EthernetLayer));
+                        responseArp->hardwareType = 0x0100;
+                        responseArp->protocolType = 0x08;
+                        responseArp->hardwareSize = 6;
+                        responseArp->protocolSize = 4;
+                        responseArp->opcode = 0x0200;
+                        for (uint8_t i2 = 0; i2 < 6; i2++)
+                        {
+                            responseArp->sourceMac[i2] = mac[i2];
+                            responseArp->destinationMac[i2] = ethernet->source[i2];
+                        }
+                        for (uint8_t i2 = 0; i2 < 4; i2++)
+                        {
+                            responseArp->sourceIp[i2] = ip[i2];
+                            responseArp->destinationIp[i2] = arp->sourceIp[i2];
+                        }
+                        sendPacket(data, sizeof(EthernetLayer) + sizeof(ArpLayer));
+                        unallocate(data);
                     }
                 }
-                print(L"\nSender MAC: ");
-                for (uint8_t i2 = 0; i2 < 6; i2++)
+                else if (ethernet->type == 0x8)
                 {
-                    CHAR16 characters[3];
-                    ValueToHex(characters, layer->sender[i2]);
-                    print(characters);
-                    if (i2 != 5)
+                    Ipv4Layer* ipv4 = (Ipv4Layer*)((uint64_t)ethernet + sizeof(EthernetLayer));
+                    if (ipv4->protocol == 0x11)
                     {
-                        print(L":");
+                        UdpLayer* udp = (UdpLayer*)((uint64_t)ipv4 + sizeof(Ipv4Layer));
+                        ConnectionData* connection = (ConnectionData*)&connections;
+                        while (iterateList(&connection))
+                        {
+                            if (connection->port == (((udp->destination & 0xFF) << 8) | ((udp->destination >> 8) & 0xFF)))
+                            {
+                                if (router[0] == 0xFF)
+                                {
+                                    for (uint8_t i = 0; i < 6; i++)
+                                    {
+                                        router[i] = ethernet->source[i];
+                                    }
+                                }
+                                uint64_t length = (((udp->length & 0xFF) << 8) | ((udp->length >> 8) & 0xFF)) - sizeof(UdpLayer);
+                                Packet* packet = addItem(&connection->connection.received, sizeof(Packet) + length);
+                                for (uint8_t i = 0; i < 4; i++)
+                                {
+                                    packet->ip[i] = ipv4->source[i];
+                                }
+                                packet->port = connection->port;
+                                packet->length = length;
+                                copyMemory((uint8_t*)((uint64_t)udp + sizeof(UdpLayer)), packet->data, packet->length);
+                            }
+                        }
                     }
                 }
-                print(L"\nNext layer: ");
-                CHAR16 characters[10];
-                ValueToHex(characters, layer->type);
-                print(characters);
-                print(L"\n");
             }
         }
         currentEthernetPacket = 0;
+        ConnectionData* connection = (ConnectionData*)&connections;
+        while (iterateList(&connection))
+        {
+            Packet* packet = (Packet*)&connection->connection.send;
+            while (iterateList(&packet))
+            {
+                uint8_t* data = allocate(sizeof(EthernetLayer) + sizeof(Ipv4Layer) + sizeof(UdpLayer) + packet->length);
+                EthernetLayer* ethernet = (EthernetLayer*)data;
+                for (uint8_t i = 0; i < 6; i++)
+                {
+                    ethernet->destination[i] = router[i];
+                    ethernet->source[i] = mac[i];
+                }
+                ethernet->type = 0x8;
+                Ipv4Layer* ipv4 = (Ipv4Layer*)((uint64_t)ethernet + sizeof(EthernetLayer));
+                ipv4->version = 5;
+                ipv4->ihl = 4;
+                ipv4->type = 0;
+                uint16_t size = sizeof(Ipv4Layer) + sizeof(UdpLayer) + packet->length;
+                ipv4->length = ((size & 0xFF) << 8) | ((size >> 8) & 0xFF);
+                ipv4->identification = 0;
+                ipv4->flags = 0;
+                ipv4->ttl = 0x80;
+                ipv4->protocol = 0x11;
+                ipv4->checksum = 0;
+                for (uint8_t i = 0; i < 4; i++)
+                {
+                    ipv4->source[i] = ip[i];
+                    ipv4->destination[i] = packet->ip[i];
+                }
+                uint32_t ipv4Checksum = 0;
+                for (uint8_t i = 0; i < 10; i++)
+                {
+                    ipv4Checksum += ((uint16_t*)ipv4)[i];
+                }
+                while (ipv4Checksum >> 16)
+                {
+                    ipv4Checksum = ((ipv4Checksum & 0xFFFF) + (ipv4Checksum >> 16));
+                }
+                ipv4->checksum = ~ipv4Checksum;
+                UdpLayer* udp = (UdpLayer*)((uint64_t)ipv4 + sizeof(Ipv4Layer));
+                udp->source = ((connection->port & 0xFF) << 8) | ((connection->port >> 8) & 0xFF);
+                udp->destination = ((packet->port & 0xFF) << 8) | ((packet->port >> 8) & 0xFF);
+                uint16_t udpSize = sizeof(UdpLayer) + packet->length;
+                udp->length = ((udpSize & 0xFF) << 8) | ((udpSize >> 8) & 0xFF);
+                udp->checksum = 0;
+                copyMemory(packet->data, (uint8_t*)((uint64_t)udp + sizeof(UdpLayer)), packet->length);
+                uint64_t udpAddress = (uint64_t)udp;
+                uint16_t* udpMemory = (uint16_t*)udpAddress;
+                uint32_t checksum = 0;
+                for (uint16_t i = 0; i < ((sizeof(UdpLayer) + packet->length) / 2); i++)
+                {
+                    checksum += *udpMemory;
+                    udpMemory++;
+                }
+                if (((sizeof(UdpLayer) + packet->length) & 0x1) == 0x1)
+                {
+                    checksum += (*udpMemory & 0xFF);
+                }
+                checksum += (udp->length + (0x0011 << 8) + (ipv4->source[0] | ipv4->source[1] << 8) + (ipv4->source[2] | ipv4->source[3] << 8) + (ipv4->destination[0] | ipv4->destination[1] << 8) + (ipv4->destination[2] | ipv4->destination[3] << 8));
+                while ((checksum >> 16) > 0)
+                {
+                    checksum = ((checksum & 0xFFFF) + (checksum >> 16));
+                } 
+                udp->checksum = ~checksum;
+                sendPacket(data, sizeof(EthernetLayer) + sizeof(Ipv4Layer) + sizeof(UdpLayer) + packet->length);
+                unallocate(data);
+            }
+            unallocateList(&connection->connection.send);
+            connection->connection.send = NULL;
+        }
+        if (ip[0] && dhcpConnection)
+        {
+            debug("Closing DHCP connection");
+            closeConnection(dhcpConnection);
+            dhcpConnection = NULL;
+            debug("Closed DHCP connection");
+        }
         if (!typing && terminalPid == UINT64_MAX)
         {
             if (StrLen(typingBuffer) > 0)
@@ -772,42 +1100,6 @@ void start()
                     ValueToString(usedMessage, FALSE, total - kb * 1000);
                     print(usedMessage);
                     print(L" bytes of ram.\n");
-                }
-                else if (StrCmp(typingBuffer, L"vm") == 0)
-                {
-                    EthernetLayer layer;
-                    layer.receiver[0] = 0xD8;
-                    layer.receiver[1] = 0x9E;
-                    layer.receiver[2] = 0xF3;
-                    layer.receiver[3] = 0x14;
-                    layer.receiver[4] = 0x59;
-                    layer.receiver[5] = 0xA9;
-                    layer.sender[0] = 0x52;
-                    layer.sender[1] = 0x54;
-                    layer.sender[2] = 0x00;
-                    layer.sender[3] = 0x12;
-                    layer.sender[4] = 0x34;
-                    layer.sender[5] = 0x56;
-                    layer.type = 0;
-                    sendPacket((uint8_t*)&layer, 60);
-                }
-                else if (StrCmp(typingBuffer, L"pc") == 0)
-                {
-                    EthernetLayer layer;
-                    layer.receiver[0] = 0x52;
-                    layer.receiver[1] = 0x54;
-                    layer.receiver[2] = 0x00;
-                    layer.receiver[3] = 0x12;
-                    layer.receiver[4] = 0x34;
-                    layer.receiver[5] = 0x56;
-                    layer.sender[0] = 0xD8;
-                    layer.sender[1] = 0x9E;
-                    layer.sender[2] = 0xF3;
-                    layer.sender[3] = 0x14;
-                    layer.sender[4] = 0x59;
-                    layer.sender[5] = 0xA9;
-                    layer.type = 0;
-                    sendPacket((uint8_t*)&layer, 60);
                 }
                 else
                 {

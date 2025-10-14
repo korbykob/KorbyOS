@@ -162,3 +162,15 @@ uint64_t getUsedRam()
     __asm__ volatile ("movq $26, %%rdi; int $0x80; movq %%rax, %0" : "=g"(result) : : "%rdi");
     return result;
 }
+
+Connection* createConnection(uint16_t port)
+{
+    uint64_t result = 0;
+    __asm__ volatile ("movq $27, %%rdi; movq %1, %%rsi; int $0x80; movq %%rax, %0" : "=g"(result) : "g"((uint64_t)port) : "%rdi", "%rsi");
+    return (Connection*)result;
+}
+
+void closeConnection(Connection* connection)
+{
+    __asm__ volatile ("movq $28, %%rdi; movq %0, %%rsi; int $0x80" : : "g"((uint64_t)connection) : "%rdi", "%rsi");
+}

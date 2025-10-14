@@ -838,6 +838,7 @@ __attribute__((interrupt, target("general-regs-only"))) void isr21(InterruptFram
 {
     panicCode(21, code);
 }
+
 __attribute__((interrupt, target("general-regs-only"))) void isr22(InterruptFrame* frame)
 {
     panic(22);

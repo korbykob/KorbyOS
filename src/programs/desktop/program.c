@@ -573,7 +573,10 @@ void update(uint64_t ticks)
         if (hour >= 12)
         {
             half = TRUE;
-            hour -= 12;
+            if (hour != 12)
+            {
+                hour -= 12;
+            }
         }
         else if (hour == 0)
         {

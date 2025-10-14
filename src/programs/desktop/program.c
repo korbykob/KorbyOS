@@ -1,6 +1,6 @@
 #include "../../program.h"
 
-Display display;
+Display display = {};
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 typedef struct
 {

@@ -671,7 +671,6 @@ void start()
     ValueToString(coreMessage, FALSE, cpuCount + 1);
     print(coreMessage);
     print(L"\n\n");
-    debug("Creating DHCP connection");
     Connection* dhcpConnection = createConnection(68);
     debug("Allocating DHCP request");
     Packet* dhcpPacket = addItem(&dhcpConnection->send, sizeof(Packet) + sizeof(DhcpLayer));
@@ -1051,10 +1050,8 @@ void start()
         }
         if (ip[0] && dhcpConnection)
         {
-            debug("Closing DHCP connection");
             closeConnection(dhcpConnection);
             dhcpConnection = NULL;
-            debug("Closed DHCP connection");
         }
         if (!typing && terminalPid == UINT64_MAX)
         {

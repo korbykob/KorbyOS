@@ -305,11 +305,13 @@ void mouseClick(BOOLEAN left, BOOLEAN pressed)
                 if (mouseX >= 4 && mouseX < 28)
                 {
                     exiting = TRUE;
+                    debug("Telling windows to close");
                     Window* window = (Window*)&windows;
                     while (iterateList(&window))
                     {
                         ((Event*)addItem(&window->events, sizeof(Event)))->id = 0;
                     }
+                    debug("Waiting for windows to close");
                 }
                 else
                 {
@@ -461,9 +463,12 @@ void _start()
     }
     unallocate(files);
     getDisplayInfo(&display);
+    debug("Initialising graphics");
     initGraphics(display.buffer, display.width, readFile(L"/fonts/font.psf", NULL));
+    debug("Allocating wallpaper");
     wallpaper = allocate(display.width * display.height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL* buffer = wallpaper;
+    debug("Reading wallpaper image file");
     uint8_t* wallpaperFile = readFile(L"/programs/desktop/wallpaper.bmp", NULL);
     uint8_t* fileBuffer = wallpaperFile + 0x36;
     int32_t width = *(int32_t*)(wallpaperFile + 0x12);
@@ -618,6 +623,7 @@ void update(uint64_t ticks)
     }
     if (exiting && listLength(&windows) == 0)
     {
+        debug("Unallocating allocations");
         unallocateList(&programs);
         unallocate(wallpaper);
         removeKeyCall(key);

@@ -1,6 +1,8 @@
 #include "../../program.h"
 
+uint64_t cores = 0;
 Display display = {};
+EFI_GRAPHICS_OUTPUT_BLT_PIXEL* original = NULL;
 EFI_GRAPHICS_OUTPUT_BLT_PIXEL* wallpaper = NULL;
 typedef struct
 {
@@ -69,7 +71,6 @@ typedef struct
     Window* window;
 } Taskbar;
 Taskbar* taskbar = NULL;
-uint64_t cores = 0;
 PointerArray* key = NULL;
 PointerArray* move = NULL;
 PointerArray* click = NULL;
@@ -462,7 +463,16 @@ void _start()
         }
     }
     unallocate(files);
+    debug("Getting core count");
+    cores = getCores();
     getDisplayInfo(&display);
+    debug("Allocating original screen");
+    original = allocate(display.width * display.height * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+    debug("Backing up original screen");
+    blitTo = (uint64_t*)original;
+    blitFrom = (uint64_t*)display.buffer;
+    blitSize = (display.width * display.height / 2) / cores;
+    splitTask(coreBlit, cores);
     debug("Initialising graphics");
     initGraphics(display.buffer, display.width, readFile(L"/fonts/font.psf", NULL));
     debug("Allocating wallpaper");
@@ -495,8 +505,6 @@ void _start()
     move = addMoveCall(mouseMove);
     click = addClickCall(mouseClick);
     syscall = registerSyscallHandler(L"desktop", syscallHandle);
-    debug("Getting core count");
-    cores = getCores();
     debug("Desktop started");
 }
 
@@ -623,8 +631,14 @@ void update(uint64_t ticks)
     }
     if (exiting && listLength(&windows) == 0)
     {
+        debug("Restoring original screen");
+        blitTo = (uint64_t*)display.buffer;
+        blitFrom = (uint64_t*)original;
+        blitSize = (display.width * display.height / 2) / cores;
+        splitTask(coreBlit, cores);
         debug("Unallocating allocations");
         unallocateList(&programs);
+        unallocate(original);
         unallocate(wallpaper);
         removeKeyCall(key);
         removeMoveCall(move);

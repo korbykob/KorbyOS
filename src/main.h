@@ -30,7 +30,7 @@ typedef struct
     uint64_t ss;
 } __attribute__((packed)) InterruptFrame;
 uint64_t hpetCounter = 0;
-uint8_t mouseCycle = 1;
+uint8_t mouseCycle = 2;
 uint8_t mouseBytes[3];
 BOOLEAN lastLeftClick = FALSE;
 BOOLEAN lastRightClick = FALSE;
@@ -1123,8 +1123,6 @@ void completed()
     idtr.base = (uint64_t)idt;
     debug("Loading IDT");
     __asm__ volatile ("lidt %0" : : "m"(idtr));
-    debug("Enabling interrupts");
-    __asm__ volatile ("sti");
     debug("Initialising HPET");
     *(uint32_t*)(hpetAddress + 0x10) |= 0b11;
     *(uint32_t*)(hpetAddress + 0x100) |= 0b1100;
@@ -1311,6 +1309,8 @@ void completed()
             break;
         }
     }
+    debug("Enabling interrupts");
+    __asm__ volatile ("sti");
     debug("Saving paging address");
     uint64_t cr3 = 0;
     __asm__ volatile ("mov %%cr3, %0" : "=g"(cr3));

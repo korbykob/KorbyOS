@@ -104,7 +104,7 @@ uint8_t inb(uint16_t port)
     return value;
 }
 
-void outw(uint32_t port, uint16_t value)
+void outw(uint16_t port, uint16_t value)
 {
     __asm__ volatile ("outw %w0, %w1" : : "a"(value), "Nd"(port) : "memory");
 }
@@ -116,7 +116,7 @@ uint16_t inw(uint16_t port)
     return value;
 }
 
-void outd(uint32_t port, uint32_t value)
+void outd(uint16_t port, uint32_t value)
 {
     __asm__ volatile ("outl %d0, %w1" : : "a"(value), "Nd"(port) : "memory");
 }

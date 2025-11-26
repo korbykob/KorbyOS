@@ -92,6 +92,16 @@ void* allocate(uint64_t amount);
 
 void unallocate(void* pointer);
 
+void lock(BOOLEAN* mutex)
+{
+    __asm__ volatile ("xorb %%al, %%al; movb $1, %%bl; mutexCheck:; lock cmpxchgb %%bl, %0; jne mutexCheck" : "+m"(*mutex) : : "%al", "%bl", "memory");
+}
+
+void unlock(BOOLEAN* mutex)
+{
+    __asm__ volatile ("movb $0, %0" : "=m"(*mutex) : : "memory");
+}
+
 void outb(uint16_t port, uint8_t value)
 {
     __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");

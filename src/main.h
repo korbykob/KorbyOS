@@ -908,7 +908,8 @@ __attribute__((naked)) void hpet()
     __asm__ volatile ("movb $0x20, %al; outb %al, $0x20");
     __asm__ volatile ("nextThread:");
     __asm__ volatile ("movq %1, %0" : "=g"(currentThread) : "g"(currentThread->next));
-    __asm__ volatile ("cmpq $0, %0; je switchThread; bt $0, %0; jc nextThread" : : "g"(currentThread->mutex));
+    __asm__ volatile ("cmpq $0, %0; je switchThread" : : "g"(currentThread->mutex));
+    __asm__ volatile ("cmpb $1, %0; je nextThread" : : "g"(*currentThread->mutex));
     __asm__ volatile ("switchThread:");
     __asm__ volatile ("movq %0, %%rsp" : : "g"(currentThread->sp));
     __asm__ volatile ("movdqu (%rsp), %xmm15; movdqu 16(%rsp), %xmm14; movdqu 32(%rsp), %xmm13; movdqu 48(%rsp), %xmm12; movdqu 64(%rsp), %xmm11; movdqu 80(%rsp), %xmm10; movdqu 96(%rsp), %xmm9; movdqu 112(%rsp), %xmm8; movdqu 128(%rsp), %xmm7; movdqu 144(%rsp), %xmm6; movdqu 160(%rsp), %xmm5; movdqu 176(%rsp), %xmm4; movdqu 192(%rsp), %xmm3; movdqu 208(%rsp), %xmm2; movdqu 224(%rsp), %xmm1; movdqu 240(%rsp), %xmm0; addq $256, %rsp");

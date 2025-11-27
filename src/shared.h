@@ -94,7 +94,7 @@ void unallocate(void* pointer);
 
 void lock(BOOLEAN* mutex)
 {
-    __asm__ volatile ("xorb %%al, %%al; movb $1, %%bl; mutexCheck:; lock cmpxchgb %%bl, %0; jne mutexCheck" : "+m"(*mutex) : : "%al", "%bl", "memory");
+    __asm__ volatile ("movb $1, %%bl; mutexCheck:; xorb %%al, %%al; lock cmpxchgb %%bl, %0; jne mutexCheck" : "+m"(*mutex) : : "%al", "%bl", "memory");
 }
 
 void unlock(BOOLEAN* mutex)

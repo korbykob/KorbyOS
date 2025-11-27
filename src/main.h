@@ -68,7 +68,7 @@ typedef struct
     void* next;
     uint64_t id;
     BOOLEAN* mutex;
-    void* stack;
+    uint8_t stack[0x80000];
     uint64_t sp;
 } Thread;
 Thread* threads = NULL;
@@ -927,7 +927,6 @@ void destroyThread(uint64_t id)
         current = current->next;
     }
     last->next = current->next;
-    unallocate(current->stack);
     unallocate(current);
 }
 
@@ -939,7 +938,6 @@ void exitThread()
         current = current->next;
     }
     current->next = currentThread->next;
-    unallocate(currentThread->stack);
     unallocate(currentThread);
     currentThread = current;
     __asm__ volatile ("jmp nextThread");
@@ -973,8 +971,7 @@ uint64_t createThread(void (*function)())
     }
     thread->id = id;
     thread->mutex = NULL;
-    thread->stack = allocate(0x80000); // combine this into the thread struct
-    thread->sp = (uint64_t)thread->stack + 0x80000 - sizeof(InterruptFrame) - 8;
+    thread->sp = (uint64_t)&thread->stack + 0x80000 - sizeof(InterruptFrame) - 8;
     InterruptFrame* frame = (InterruptFrame*)thread->sp;
     frame->ip = (uint64_t)function;
     frame->cs = cs;

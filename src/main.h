@@ -67,7 +67,6 @@ typedef struct
 {
     void* next;
     uint64_t id;
-    BOOLEAN* mutex;
     uint8_t stack[0x80000];
     uint64_t sp;
 } Thread;
@@ -967,7 +966,6 @@ uint64_t createThread(void (*function)())
         }
     }
     thread->id = id;
-    thread->mutex = NULL;
     thread->sp = (uint64_t)&thread->stack + 0x80000 - sizeof(InterruptFrame) - 8;
     InterruptFrame* frame = (InterruptFrame*)thread->sp;
     frame->ip = (uint64_t)function;
@@ -1231,7 +1229,6 @@ void completed()
     threads = allocate(sizeof(Thread));
     threads->next = threads;
     threads->id = 0;
-    threads->mutex = NULL;
     __asm__ volatile ("movq %%rsp, %0" : "=g"(threads->sp));
     currentThread = threads;
     debug("Initialising PS/2 mouse");

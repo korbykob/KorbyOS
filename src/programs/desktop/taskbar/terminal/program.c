@@ -138,7 +138,7 @@ void terminalPrint(const CHAR16* message)
     drawRectangle(cursorX * 16, cursorY * 32, 16, 32, normal);
 }
 
-void _start()
+void start()
 {
     initialiseDesktopCalls();
     cores = getCores();

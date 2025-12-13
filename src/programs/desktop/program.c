@@ -438,7 +438,7 @@ uint64_t syscallHandle(uint64_t code, uint64_t arg1, uint64_t arg2, uint64_t arg
     return 0;
 }
 
-void _start()
+void start()
 {
     uint64_t count = 0;
     debug("Loading programs");

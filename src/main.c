@@ -83,6 +83,7 @@ typedef struct
     void* next;
     uint64_t pid;
     uint8_t terminalId;
+    uint8_t* memory;
     void (*start)();
     void (*update)(uint64_t ticks);
 } Program;
@@ -201,9 +202,10 @@ uint64_t execute(const CHAR16* file)
     uint64_t size = 0;
     uint8_t* data = readFile(file, &size);
     debug("Allocating binary");
-    program->start = allocate(size);
-    copyMemory(data, (uint8_t*)program->start, size);
-    program->update = (void*)program->start + 5;
+    program->memory = allocate(size - 8);
+    copyMemory(data + 8, program->memory, size - 8);
+    program->start = (void*)(data + *(uint32_t*)data);
+    program->update = (void*)(data + *(uint32_t*)(data + 4));
     Program* oldProgram = currentProgram;
     currentProgram = program;
     debug("Starting program");
@@ -229,7 +231,7 @@ void quit()
             break;
         }
     }
-    unallocate(currentProgram->start);
+    unallocate(currentProgram->memory);
     debug("Exited program");
 }
 

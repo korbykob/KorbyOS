@@ -8,21 +8,17 @@ objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -
 mkdir -p bin/system
 nasm -f bin src/system/smp.asm -o bin/system/smp.boot
 mkdir -p bin/programs/test
-nasm -f elf64 src/programs/test/program.asm -o bin/programs/test/programasm.o
-gcc -Ignu-efi/inc -fpie -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/test/program.c -o bin/programs/test/program.o
-ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack -o bin/programs/test/program.bin --oformat binary bin/programs/test/programasm.o bin/programs/test/program.o -lgnuefi -lefi
+gcc -Ignu-efi/inc -fpie -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/test/program.c -o bin/programs/test/program.o
+ld -Tsrc/programs/linker.ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack bin/programs/test/program.o -o bin/programs/test/program.bin -lgnuefi -lefi
 mkdir -p bin/programs/desktop
-nasm -f elf64 src/programs/desktop/program.asm -o bin/programs/desktop/programasm.o
-gcc -Ignu-efi/inc -fpie -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/desktop/program.c -o bin/programs/desktop/program.o
-ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack -o bin/programs/desktop/program.bin --oformat binary bin/programs/desktop/programasm.o bin/programs/desktop/program.o -lgnuefi -lefi
+gcc -Ignu-efi/inc -fpie -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/desktop/program.c -o bin/programs/desktop/program.o
+ld -Tsrc/programs/linker.ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack bin/programs/desktop/program.o -o bin/programs/desktop/program.bin -lgnuefi -lefi
 mkdir -p bin/programs/desktop/taskbar/terminal
-nasm -f elf64 src/programs/desktop/taskbar/terminal/program.asm -o bin/programs/desktop/taskbar/terminal/programasm.o
-gcc -Ignu-efi/inc -fpie -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/desktop/taskbar/terminal/program.c -o bin/programs/desktop/taskbar/terminal/program.o
-ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack -o bin/programs/desktop/taskbar/terminal/program.bin --oformat binary bin/programs/desktop/taskbar/terminal/programasm.o bin/programs/desktop/taskbar/terminal/program.o -lgnuefi -lefi
+gcc -Ignu-efi/inc -fpie -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/desktop/taskbar/terminal/program.c -o bin/programs/desktop/taskbar/terminal/program.o
+ld -Tsrc/programs/linker.ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack bin/programs/desktop/taskbar/terminal/program.o -o bin/programs/desktop/taskbar/terminal/program.bin -lgnuefi -lefi
 mkdir -p bin/programs/desktop/taskbar/rendering
-nasm -f elf64 src/programs/desktop/taskbar/rendering/program.asm -o bin/programs/desktop/taskbar/rendering/programasm.o
-gcc -Ignu-efi/inc -fpie -fno-zero-initialized-in-bss -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/desktop/taskbar/rendering/program.c -o bin/programs/desktop/taskbar/rendering/program.o
-ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack -o bin/programs/desktop/taskbar/rendering/program.bin --oformat binary bin/programs/desktop/taskbar/rendering/programasm.o bin/programs/desktop/taskbar/rendering/program.o -lgnuefi -lefi
+gcc -Ignu-efi/inc -fpie -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -c src/programs/desktop/taskbar/rendering/program.c -o bin/programs/desktop/taskbar/rendering/program.o
+ld -Tsrc/programs/linker.ld -Lgnu-efi/x86_64/lib -Lgnu-efi/x86_64/gnuefi -znoexecstack bin/programs/desktop/taskbar/rendering/program.o -o bin/programs/desktop/taskbar/rendering/program.bin -lgnuefi -lefi
 uefi-run -b OVMF-pure-efi.fd -d -s 20 \
 -f bin/system/smp.boot:system/smp.boot \
 -f src/fonts/font.psf:fonts/font.psf \

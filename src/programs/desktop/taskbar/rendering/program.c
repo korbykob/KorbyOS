@@ -101,7 +101,7 @@ uint64_t key = 0;
 uint64_t waiting = 0;
 uint64_t lastKey = UINT64_MAX;
 
-void _start()
+void start()
 {
     initialiseDesktopCalls();
     cores = getCores();

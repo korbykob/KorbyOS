@@ -14,7 +14,7 @@ uint16_t size = 0;
 BOOLEAN got = FALSE;
 IpInfo info = {};
 
-void _start()
+void start()
 {
     getIpInfo(&info);
     connection = createConnection(49152);

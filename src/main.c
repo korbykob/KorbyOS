@@ -204,8 +204,8 @@ uint64_t execute(const CHAR16* file)
     debug("Allocating binary");
     program->memory = allocate(size - 8);
     copyMemory(data + 8, program->memory, size - 8);
-    program->start = (void*)(data + *(uint32_t*)data);
-    program->update = (void*)(data + *(uint32_t*)(data + 4));
+    program->start = (void*)(program->memory + *(uint32_t*)data - 8);
+    program->update = (void*)(program->memory + *(uint32_t*)(data + 4) - 8);
     Program* oldProgram = currentProgram;
     currentProgram = program;
     debug("Starting program");

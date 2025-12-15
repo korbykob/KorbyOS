@@ -1169,7 +1169,7 @@ void completed()
                     debug("Enabling card");
                     *(uint32_t*)(bar + 0x00) = *(uint32_t*)(bar + 0x00) | (1 << 6);
                     debug("Setting up RX buffers");
-                    rxDescriptors = (E1000RxDescriptor*)(((uint64_t)allocate(sizeof(E1000RxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    rxDescriptors = (E1000RxDescriptor*)allocate(sizeof(E1000RxDescriptor) * 256);
                     for (uint64_t i = 0; i < sizeof(E1000RxDescriptor) * 256; i++)
                     {
                         *((uint8_t*)rxDescriptors + i) = 0;
@@ -1189,7 +1189,7 @@ void completed()
                     *(uint32_t*)(bar + 0x2810) = 0;
                     *(uint32_t*)(bar + 0x2818) = 255;
                     debug("Setting up TX buffers");
-                    txDescriptors = (E1000TxDescriptor*)(((uint64_t)allocate(sizeof(E1000TxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    txDescriptors = (E1000TxDescriptor*)allocate(sizeof(E1000TxDescriptor) * 256);
                     for (uint64_t i = 0; i < sizeof(E1000TxDescriptor) * 256; i++)
                     {
                         *((uint8_t*)txDescriptors + i) = 0;
@@ -1243,7 +1243,7 @@ void completed()
                     installInterrupt(pciInb(bus, device, function, 0x3C), rtl8169, TRUE);
                     outw(bar + 0x3C, (1 << 0));
                     debug("Setting up RX buffers");
-                    rxDescriptors = (Rtl8169RxDescriptor*)(((uint64_t)allocate(sizeof(Rtl8169RxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    rxDescriptors = (Rtl8169RxDescriptor*)allocate(sizeof(Rtl8169RxDescriptor) * 256);
                     for (uint64_t i = 0; i < sizeof(Rtl8169RxDescriptor) * 256; i++)
                     {
                         *((uint8_t*)rxDescriptors + i) = 0;
@@ -1265,7 +1265,7 @@ void completed()
                     outd(bar + 0xE4, (uint64_t)rxDescriptors);
                     outd(bar + 0xE8, (uint64_t)rxDescriptors >> 32);
                     debug("Setting up TX buffers");
-                    txDescriptors = (Rtl8169TxDescriptor*)(((uint64_t)allocate(sizeof(Rtl8169TxDescriptor) * 256 + 0xFF) + 0xFF) & 0xFFFFFFFFFFFFFF00);
+                    txDescriptors = (Rtl8169TxDescriptor*)allocate(sizeof(Rtl8169TxDescriptor) * 256);
                     for (uint64_t i = 0; i < sizeof(Rtl8169TxDescriptor) * 256; i++)
                     {
                         *((uint8_t*)txDescriptors + i) = 0;

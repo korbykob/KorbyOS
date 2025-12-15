@@ -175,30 +175,28 @@ void* allocate(uint64_t amount)
         if (allocation->present)
         {
             count++;
-            if (value >= allocation->end)
+            if (value + amount <= allocation->start || value >= allocation->end)
             {
-                Allocation* test = allocation - 1;
-                while (!test->present && count != allocations)
-                {
-                    count++;
-                    test--;
-                }
-                if (count == allocations || value + amount - 1 < test->start)
-                {
-                    break;
-                }
-                allocation = test;
+                allocation--;
             }
             else
             {
                 value = allocation->end;
-                allocation--;
+                allocation = allocated;
+                count = 0;
             }
         }
         else
         {
             allocation--;
         }
+    }
+    allocation = allocated;
+    count = 0;
+    while (allocation->present && count != allocations)
+    {
+        count++;
+        allocation--;
     }
     allocation->present = TRUE;
     allocation->start = value;

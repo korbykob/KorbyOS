@@ -31,4 +31,4 @@ uefi-run -b OVMF-pure-efi.fd -d -s 20 \
 -f src/programs/desktop/taskbar/rendering/program.bmp:programs/desktop/taskbar/rendering/program.bmp \
 -f src/programs/desktop/taskbar/rendering/wall.bmp:programs/desktop/taskbar/rendering/wall.bmp \
 -f src/programs/desktop/taskbar/rendering/sprite.bmp:programs/desktop/taskbar/rendering/sprite.bmp \
-bin/main.efi -- -enable-kvm -m 16G -cpu host -smp 4 -audiodev sdl,id=speaker -machine pcspk-audiodev=speaker -nic user,model=e1000e -serial null -serial null -serial stdio -display sdl
+bin/main.efi -- -enable-kvm -m 16G -cpu host -smp 4 -audiodev pa,id=speaker -machine pcspk-audiodev=speaker -nic user,model=e1000e -serial null -serial null -serial stdio -display sdl

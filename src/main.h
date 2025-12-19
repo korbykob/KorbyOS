@@ -34,6 +34,13 @@ uint8_t mouseCycle = 2;
 uint8_t mouseBytes[3];
 BOOLEAN lastLeftClick = FALSE;
 BOOLEAN lastRightClick = FALSE;
+uint64_t fileCount = 0;
+struct
+{
+    CHAR16* name;
+    uint64_t size;
+    uint8_t* data;
+}* fileData = NULL;
 File* files = NULL;
 typedef struct
 {
@@ -164,6 +171,94 @@ struct
     uint16_t size;
 } ethernetPackets[255];
 uint8_t currentEthernetPacket = 0;
+
+EFI_FILE_INFO* openFolder(EFI_FILE_HANDLE folder)
+{
+    EFI_STATUS status = EFI_SUCCESS;
+    EFI_FILE_INFO *buffer = NULL;
+    UINTN bufferSize = SIZE_OF_EFI_FILE_INFO + 200;
+    BOOLEAN end = FALSE;
+    while (GrowBuffer(&status, (void**)&buffer, bufferSize))
+    {
+        status = uefi_call_wrapper(folder->Read, 3, folder, &bufferSize, buffer);
+        if (bufferSize == 0)
+        {
+            end = TRUE;
+            break;
+        }
+    }
+    if (end)
+    {
+        FreePool(buffer);
+        return NULL;
+    }
+    return buffer;
+}
+
+void parseFolder(EFI_FILE_HANDLE fs, const CHAR16* name, void (*found)(EFI_FILE_HANDLE fs, const CHAR16* name))
+{
+    EFI_FILE_HANDLE folder = NULL;
+    uefi_call_wrapper(fs->Open, 5, fs, &folder, name, EFI_FILE_MODE_READ, 0);
+    EFI_FILE_INFO* info = NULL;
+    while ((info = openFolder(folder)))
+    {
+        if (StrCmp(info->FileName, L".") != 0 && StrCmp(info->FileName, L"..") != 0)
+        {
+            uint64_t pathLength = StrLen(name);
+            uint64_t nameLength = StrLen(info->FileName);
+            CHAR16* fullName = AllocatePool((pathLength + nameLength + 2) * sizeof(CHAR16));
+            for (uint64_t i = 0; i < pathLength; i++)
+            {
+                fullName[i] = name[i];
+            }
+            fullName[pathLength] = L'\\';
+            for (uint64_t i = 0; i < nameLength; i++)
+            {
+                fullName[i + pathLength + 1] = info->FileName[i];
+            }
+            fullName[pathLength + nameLength + 1] = L'\0';
+            if (info->Attribute & EFI_FILE_DIRECTORY)
+            {
+                parseFolder(fs, fullName, found);
+            }
+            found(fs, fullName);
+            FreePool(fullName);
+        }
+        FreePool(info);
+    }
+    uefi_call_wrapper(folder->Close, 1, folder);
+}
+
+void countFiles(EFI_FILE_HANDLE fs, const CHAR16* name)
+{
+    fileCount++;
+}
+
+void addFiles(EFI_FILE_HANDLE fs, const CHAR16* name)
+{
+    uint64_t nameLength = StrLen(name);
+    fileData[fileCount].name = AllocatePool(nameLength * 2);
+    for (uint64_t i = 0; i < nameLength; i++)
+    {
+        fileData[fileCount].name[i] = name[i + 1] == L'\\' ? L'/' : name[i + 1];
+    }
+    EFI_FILE_HANDLE file = NULL;
+    uefi_call_wrapper(fs->Open, 5, fs, &file, name, EFI_FILE_MODE_READ, 0);
+    EFI_FILE_INFO* info = LibFileInfo(file);
+    if (!(info->Attribute & EFI_FILE_DIRECTORY))
+    {
+        fileData[fileCount].size = info->FileSize;
+        fileData[fileCount].data = AllocatePool(info->FileSize);
+        uefi_call_wrapper(file->Read, 3, file, &info->FileSize, fileData[fileCount].data);
+    }
+    else
+    {
+        fileData[fileCount].size = 0;
+        fileData[fileCount].data = NULL;
+    }
+    FreePool(info);
+    fileCount++;
+}
 
 void* allocate(uint64_t amount)
 {
@@ -316,96 +411,14 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     EFI_LOADED_IMAGE* image = NULL;
     uefi_call_wrapper(BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, &image);
     debug("Opening root file system");
-    EFI_FILE_HANDLE fs = LibOpenRoot(image->DeviceHandle);
-    EFI_FILE_HANDLE file = NULL;
-    debug("Loading /system/smp.boot");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"system\\smp.boot", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    EFI_FILE_INFO* info = LibFileInfo(file);
-    uint64_t smpSize = info->FileSize;
-    FreePool(info);
-    uint8_t* smp = AllocatePool(smpSize);
-    uefi_call_wrapper(file->Read, 3, file, &smpSize, smp);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /fonts/font.psf");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"fonts\\font.psf", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t fontSize = info->FileSize;
-    FreePool(info);
-    uint8_t* font = AllocatePool(fontSize);
-    uefi_call_wrapper(file->Read, 3, file, &fontSize, font);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/test/program.bin");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\test\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t testSize = info->FileSize;
-    FreePool(info);
-    uint8_t* test = AllocatePool(testSize);
-    uefi_call_wrapper(file->Read, 3, file, &testSize, test);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/program.bin");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t desktopSize = info->FileSize;
-    FreePool(info);
-    uint8_t* desktop = AllocatePool(desktopSize);
-    uefi_call_wrapper(file->Read, 3, file, &desktopSize, desktop);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/wallpaper.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\wallpaper.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t wallpaperSize = info->FileSize;
-    FreePool(info);
-    uint8_t* wallpaper = AllocatePool(wallpaperSize);
-    uefi_call_wrapper(file->Read, 3, file, &wallpaperSize, wallpaper);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/taskbar/terminal/program.bin");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\terminal\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t terminalSize = info->FileSize;
-    FreePool(info);
-    uint8_t* terminal = AllocatePool(terminalSize);
-    uefi_call_wrapper(file->Read, 3, file, &terminalSize, terminal);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/taskbar/terminal/program.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\terminal\\program.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t terminalBmpSize = info->FileSize;
-    FreePool(info);
-    uint8_t* terminalBmp = AllocatePool(terminalBmpSize);
-    uefi_call_wrapper(file->Read, 3, file, &terminalBmpSize, terminalBmp);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/taskbar/rendering/program.bin");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\program.bin", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t renderingSize = info->FileSize;
-    FreePool(info);
-    uint8_t* rendering = AllocatePool(renderingSize);
-    uefi_call_wrapper(file->Read, 3, file, &renderingSize, rendering);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/taskbar/rendering/program.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\program.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t renderingBmpSize = info->FileSize;
-    FreePool(info);
-    uint8_t* renderingBmp = AllocatePool(renderingBmpSize);
-    uefi_call_wrapper(file->Read, 3, file, &renderingBmpSize, renderingBmp);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/taskbar/rendering/wall.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\wall.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t wallSize = info->FileSize;
-    FreePool(info);
-    uint8_t* wall = AllocatePool(wallSize);
-    uefi_call_wrapper(file->Read, 3, file, &wallSize, wall);
-    uefi_call_wrapper(file->Close, 1, file);
-    debug("Loading /programs/desktop/taskbar/rendering/sprite.bmp");
-    uefi_call_wrapper(fs->Open, 5, fs, &file, L"programs\\desktop\\taskbar\\rendering\\sprite.bmp", EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
-    info = LibFileInfo(file);
-    uint64_t spriteSize = info->FileSize;
-    FreePool(info);
-    uint8_t* sprite = AllocatePool(spriteSize);
-    uefi_call_wrapper(file->Read, 3, file, &spriteSize, sprite);
-    uefi_call_wrapper(file->Close, 1, file);
+    EFI_FILE_HANDLE root = LibOpenRoot(image->DeviceHandle);
+    debug("Counting files");
+    parseFolder(root, L".", countFiles);
+    debug("Allocating room for files");
+    fileData = AllocatePool(sizeof(*fileData) * fileCount);
+    fileCount = 0;
+    debug("Reading files");
+    parseFolder(root, L".", addFiles);
     UINTN entries;
     UINTN key;
     UINTN size;
@@ -428,101 +441,13 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable)
     }
     debug("Exiting boot services");
     uefi_call_wrapper(BS->ExitBootServices, 2, ImageHandle, key);
-    debug("Adding /system");
-    File* newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/system";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /system/smp.boot");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/system/smp.boot";
-    newFile->size = smpSize;
-    newFile->data = smp;
-    debug("Adding /fonts");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/fonts";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /fonts/font.psf");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/fonts/font.psf";
-    newFile->size = fontSize;
-    newFile->data = font;
-    debug("Adding /programs");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /programs/test");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/test";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /programs/test/program.bin");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/test/program.bin";
-    newFile->size = testSize;
-    newFile->data = test;
-    debug("Adding /programs/desktop");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /programs/desktop/program.bin");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/program.bin";
-    newFile->size = desktopSize;
-    newFile->data = desktop;
-    debug("Adding /programs/desktop/wallpaper.bmp");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/wallpaper.bmp";
-    newFile->size = wallpaperSize;
-    newFile->data = wallpaper;
-    debug("Adding /programs/desktop/taskbar");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /programs/desktop/taskbar/terminal");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/terminal";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /programs/desktop/taskbar/terminal/program.bin");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/terminal/program.bin";
-    newFile->size = terminalSize;
-    newFile->data = terminal;
-    debug("Adding /programs/desktop/taskbar/terminal/program.bmp");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/terminal/program.bmp";
-    newFile->size = terminalBmpSize;
-    newFile->data = terminalBmp;
-    debug("Adding /programs/desktop/taskbar/rendering");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/rendering";
-    newFile->size = 0;
-    newFile->data = NULL;
-    debug("Adding /programs/desktop/taskbar/rendering/program.bin");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/rendering/program.bin";
-    newFile->size = renderingSize;
-    newFile->data = rendering;
-    debug("Adding /programs/desktop/taskbar/rendering/program.bmp");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/rendering/program.bmp";
-    newFile->size = renderingBmpSize;
-    newFile->data = renderingBmp;
-    debug("Adding /programs/desktop/taskbar/rendering/wall.bmp");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/rendering/wall.bmp";
-    newFile->size = wallSize;
-    newFile->data = wall;
-    debug("Adding /programs/desktop/taskbar/rendering/sprite.bmp");
-    newFile = addItem(&files, sizeof(File));
-    newFile->name = L"/programs/desktop/taskbar/rendering/sprite.bmp";
-    newFile->size = spriteSize;
-    newFile->data = sprite;
+    for (uint64_t i = 0; i < fileCount; i++)
+    {
+        File* newFile = addItem(&files, sizeof(File));
+        newFile->name = fileData[i].name;
+        newFile->size = fileData[i].size;
+        newFile->data = fileData[i].data;
+    }
     debug("Setting up GDT");
     uint64_t gdt[3];
     gdt[0] = 0x0000000000000000;
